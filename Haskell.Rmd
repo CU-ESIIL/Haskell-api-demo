@@ -1,11 +1,11 @@
 ---
 title: 'Sensing the Earth: CFT tutorial'
 output:
+  cleanrmd::html_document_clean:
+    theme: style-serif
   html_document:
     toc: yes
     df_print: paged
-  cleanrmd::html_document_clean:
-    theme: style-serif
   pdf_document:
     template: /Users/ty/Downloads/Eisvogel-2.0.0/eisvogel.latex
     toc: yes

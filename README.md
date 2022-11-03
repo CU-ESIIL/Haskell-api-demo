@@ -134,8 +134,7 @@ seamless_image_filenames <- c(
 )
 ```
 
-<img src="/Users/ty/Documents/Haskell%20api%20demo/Haskell_logo.png"
-style="width:50.0%" />
+<img src="Haskell_logo.png" style="width:50.0%" />
 
 2.  Sample the colors on that logo to make a custom color palette for
     our basemap
@@ -160,6 +159,8 @@ osmdata_sf()
 haskell_poly <- my_boundary$osm_multipolygons[1,]
 ```
 
+![](Haskell_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
 2.  Download street vector layers The street vector is divided into two
     different downloads in order to create two different objects for
     coloring in the final figure. This first download will be in the
@@ -178,6 +179,8 @@ streets_crop <- streets$osm_lines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
+![](Haskell_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
 The second street download is for the small side streets and footpaths.
 These lines will be more faint and in the background.
 
@@ -193,6 +196,8 @@ small_streets <-
 small_streets_crop <- small_streets$osm_lines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 3.  Download water features. The water features are first divided into
     moving and stationary water. We will download the river layer from
@@ -217,6 +222,8 @@ Kansas_river_multi <- water$osm_multilines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
+![](Haskell_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+
 After removing the Kansas river, we are left with a number of remaining
 waterways that are stored as both linestrings and multilinestrings. We
 need to download each of those data types individually.
@@ -232,6 +239,8 @@ small_water_lines <- water$osm_lines %>%
   st_as_sf() %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 
 The stationary water bodies are divided into two categories: lakes and
 reservoirs. We need to pull each of these individually. First, the
@@ -254,6 +263,8 @@ reservoir_crop_poly <- reservoir$osm_multipolygons %>%
 reservoir_crop <- cbind(reservoir_crop_multi, reservoir_crop_poly)
 ```
 
+![](Haskell_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+
 Now the lakes.
 
 ``` r
@@ -266,6 +277,8 @@ lake_crop <- lake$osm_polygons %>%
   st_as_sf() %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 ### Stack downloaded OSM layers into a final basemap.
 
@@ -542,7 +555,7 @@ all_climate_projections_RH <- ggplot(data= df_RH, aes(x = time, y = value, color
 all_climate_projections_RH
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-43-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-50-1.png)<!-- -->
 
 ``` r
 all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )+ 
@@ -555,7 +568,7 @@ all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )
 all_climate_projections_RH
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-44-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-51-1.png)<!-- -->
 
 ``` r
 all_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value, color = variable)) + 
@@ -567,7 +580,7 @@ all_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value, co
 all_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-45-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-52-1.png)<!-- -->
 
 ``` r
 ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value)) + 
@@ -579,7 +592,7 @@ ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = valu
 ensemble_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-46-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-53-1.png)<!-- -->
 
 ``` r
 ggplot(data= df_min_temp, aes(x = time, y = value)) + 
@@ -587,7 +600,7 @@ ggplot(data= df_min_temp, aes(x = time, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-46-2.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-53-2.png)<!-- -->
 
 ``` r
 all_climate_projections <- ggplot(data= df_precip, aes(x = time, y = value, color = variable)) + 
@@ -598,7 +611,7 @@ all_climate_projections <- ggplot(data= df_precip, aes(x = time, y = value, colo
 all_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-47-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-54-1.png)<!-- -->
 
 ``` r
 df_precip_2 <- df_precip[which(df_precip$value != 0),]
@@ -612,7 +625,7 @@ ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = time, y = valu
 ensemble_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-48-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-55-1.png)<!-- -->
 
 ``` r
 ggplot(data= df_precip, aes(x = time, y = value)) + 
@@ -620,7 +633,7 @@ ggplot(data= df_precip, aes(x = time, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-48-2.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-55-2.png)<!-- -->
 
 ``` r
 df_precip_quant_95 <- df_precip %>% 
@@ -658,96 +671,6 @@ df_precip_quant_100000 <- df_precip %>%
 
 ``` r
 ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip, color=our_purple)+
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-1.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_95, color=our_purple)+
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-2.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_96, color=our_purple)+
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-3.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_97, color=our_purple)+
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-4.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_98, color=our_purple)+
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-5.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_99, color=our_purple) +
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-6.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_100, color=our_purple)+
-  theme_tufte() 
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-7.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_1000, color=our_purple)+
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-8.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
-     geom_smooth(data= df_precip_quant_100000, color=our_purple)+
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-50-9.png)<!-- -->
-
-``` r
-ggplot(data= df_precip, aes(x = time, y = value)) + 
      geom_smooth(data= df_precip, color=our_purple)+ 
      geom_smooth(data= df_precip_quant_95, color=our_purple) +
     geom_smooth(data= df_precip_quant_96, color=our_purple) +
@@ -760,4 +683,4 @@ ggplot(data= df_precip, aes(x = time, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-51-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-57-1.png)<!-- -->
