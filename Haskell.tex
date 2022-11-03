@@ -169,20 +169,6 @@
 \usepackage{float}
 \floatplacement{figure}{H}
 
-\usepackage{booktabs}
-\usepackage{longtable}
-\usepackage{array}
-\usepackage{multirow}
-\usepackage{wrapfig}
-\usepackage{float}
-\usepackage{colortbl}
-\usepackage{pdflscape}
-\usepackage{tabu}
-\usepackage{threeparttable}
-\usepackage{threeparttablex}
-\usepackage[normalem]{ulem}
-\usepackage{makecell}
-\usepackage{xcolor}
 \ifluatex
   \usepackage{selnolig}  % disable illegal ligatures
 \fi
@@ -409,6 +395,7 @@ University}}{Climate futures for Haskell Indian Nations University}}\label{clima
 \FunctionTok{library}\NormalTok{(future)}
 \FunctionTok{library}\NormalTok{(tidytable)}
 \FunctionTok{library}\NormalTok{(janitor)}
+\FunctionTok{options}\NormalTok{(}\AttributeTok{timeout =}\NormalTok{ 600L)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -521,14 +508,14 @@ box}\label{use-plain-lnaguage-to-request-a-bounding-box}}
 \end{Highlighting}
 \end{Shaded}
 
-\resizebox{\linewidth}{!}{
-\begin{tabular}{llllllllll}
-\toprule
-osm\_id & name & building & ele & gnis.county\_id & gnis.created & gnis.feature\_id & gnis.state\_id & operator & geometry\\
-\midrule
-\cellcolor[HTML]{3E1471}{172577406} & \cellcolor[HTML]{3E1471}{Winona Hall} & \cellcolor[HTML]{3E1471}{university} & \cellcolor[HTML]{3E1471}{264} & \cellcolor[HTML]{3E1471}{045} & \cellcolor[HTML]{3E1471}{12/08/2008} & \cellcolor[HTML]{3E1471}{2510678} & \cellcolor[HTML]{3E1471}{20} & \cellcolor[HTML]{3E1471}{Haskell Indian Nations University} & \cellcolor[HTML]{3E1471}{POLYGON ((-95.23447 38.9396...}\\
-\bottomrule
-\end{tabular}}
+\begin{verbatim}
+##      osm_id        name   building ele gnis.county_id gnis.created
+## 1 172577406 Winona Hall university 264            045   12/08/2008
+##   gnis.feature_id gnis.state_id                          operator
+## 1         2510678            20 Haskell Indian Nations University
+##                         geometry
+## 1 POLYGON ((-95.23447 38.9396...
+\end{verbatim}
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -622,6 +609,8 @@ basemap}\label{download-all-the-layers-you-want-to-include-in-your-basemap}}
 \end{Highlighting}
 \end{Shaded}
 
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-13-1.pdf}
+
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \setcounter{enumi}{1}
@@ -648,6 +637,8 @@ basemap}\label{download-all-the-layers-you-want-to-include-in-your-basemap}}
 \end{Highlighting}
 \end{Shaded}
 
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-15-1.pdf}
+
 The second street download is for the small side streets and footpaths.
 These lines will be more faint and in the background.
 
@@ -665,6 +656,8 @@ These lines will be more faint and in the background.
   \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
 \end{Highlighting}
 \end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-17-1.pdf}
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -699,6 +692,8 @@ river is the large feature in this map so, we pull it out first.
 \end{Highlighting}
 \end{Shaded}
 
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-20-1.pdf}
+
 After removing the Kansas river, we are left with a number of remaining
 waterways that are stored as both linestrings and multilinestrings. We
 need to download each of those data types individually.
@@ -716,6 +711,8 @@ need to download each of those data types individually.
   \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
 \end{Highlighting}
 \end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-22-1.pdf}
 
 The stationary water bodies are divided into two categories: lakes and
 reservoirs. We need to pull each of these individually. First, the
@@ -740,6 +737,8 @@ reservoir.
 \end{Highlighting}
 \end{Shaded}
 
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-24-1.pdf}
+
 Now the lakes.
 
 \begin{Shaded}
@@ -754,6 +753,8 @@ Now the lakes.
   \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
 \end{Highlighting}
 \end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-26-1.pdf}
 
 \hypertarget{stack-downloaded-osm-layers-into-a-final-basemap.}{%
 \subsubsection{Stack downloaded OSM layers into a final
@@ -1178,7 +1179,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-42-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1193,7 +1194,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-43-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-50-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1207,7 +1208,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-44-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-51-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1221,7 +1222,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-45-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-52-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1231,7 +1232,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-45-2.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-52-2.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1244,7 +1245,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-46-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-53-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1260,7 +1261,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-47-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-54-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1270,7 +1271,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-47-2.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-54-2.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1311,132 +1312,6 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \begin{Shaded}
 \begin{Highlighting}[]
 \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-1.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_95, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-2.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_96, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-3.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_97, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-4.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_98, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-5.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_99, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-6.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_100, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{() }
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-7.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_1000, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-8.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_100000, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
-\end{verbatim}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-9.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
      \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+} 
      \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_95, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_96, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
@@ -1450,6 +1325,6 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-50-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-56-1.pdf}
 
 \end{document}

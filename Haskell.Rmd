@@ -1,17 +1,17 @@
 ---
 title: 'Sensing the Earth: CFT tutorial'
 output:
+  html_document:
+    toc: yes
+    df_print: paged
+  cleanrmd::html_document_clean:
+    theme: style-serif
   pdf_document:
     template: /Users/ty/Downloads/Eisvogel-2.0.0/eisvogel.latex
     toc: yes
     toc_depth: 2
     number_sections: true
     keep_tex: yes
-  cleanrmd::html_document_clean:
-    theme: style-serif
-  html_document:
-    toc: yes
-    df_print: paged
 ---
 \let\oldsection\section
 \renewcommand\section{\clearpage\oldsection}
@@ -119,7 +119,7 @@ seamless_image_filenames <- c(
 )
 
 ```
-![](/Users/ty/Documents/Haskell api demo/Haskell_logo.png){width=50%}
+![](Haskell_logo.png){width=50%}
 
 
 

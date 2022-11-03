@@ -120,7 +120,7 @@ basemap <- ggplot(data = st_as_sf(boundaries1)) +
 basemap
 ```
 
-![This seems to match.](Haskell_files/figure-gfm/unnamed-chunk-61-1.png)
+![This seems to match.](Haskell_files/figure-gfm/unnamed-chunk-12-1.png)
 
 ## Build a basemap from OpenStreetMap
 
@@ -134,8 +134,7 @@ seamless_image_filenames <- c(
 )
 ```
 
-<img src="/Users/ty/Documents/Haskell%20api%20demo/Haskell_logo.png"
-style="width:50.0%" />
+<img src="Haskell_logo.png" style="width:50.0%" />
 
 2.  Sample the colors on that logo to make a custom color palette for
     our basemap
@@ -160,7 +159,7 @@ osmdata_sf()
 haskell_poly <- my_boundary$osm_multipolygons[1,]
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-65-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 2.  Download street vector layers The street vector is divided into two
     different downloads in order to create two different objects for
@@ -180,7 +179,7 @@ streets_crop <- streets$osm_lines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-67-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 The second street download is for the small side streets and footpaths.
 These lines will be more faint and in the background.
@@ -198,7 +197,7 @@ small_streets_crop <- small_streets$osm_lines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-69-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 3.  Download water features. The water features are first divided into
     moving and stationary water. We will download the river layer from
@@ -223,7 +222,7 @@ Kansas_river_multi <- water$osm_multilines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-72-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 
 After removing the Kansas river, we are left with a number of remaining
 waterways that are stored as both linestrings and multilinestrings. We
@@ -241,7 +240,7 @@ small_water_lines <- water$osm_lines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-74-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
 The stationary water bodies are divided into two categories: lakes and
 reservoirs. We need to pull each of these individually. First, the
@@ -264,7 +263,7 @@ reservoir_crop_poly <- reservoir$osm_multipolygons %>%
 reservoir_crop <- cbind(reservoir_crop_multi, reservoir_crop_poly)
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-76-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 Now the lakes.
 
@@ -279,7 +278,7 @@ lake_crop <- lake$osm_polygons %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-78-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
 
 ### Stack downloaded OSM layers into a final basemap.
 
@@ -556,7 +555,7 @@ all_climate_projections_RH <- ggplot(data= df_RH, aes(x = time, y = value, color
 all_climate_projections_RH
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-101-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-52-1.png)<!-- -->
 
 ``` r
 all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )+ 
@@ -569,7 +568,7 @@ all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )
 all_climate_projections_RH
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-102-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-53-1.png)<!-- -->
 
 ``` r
 all_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value, color = variable)) + 
@@ -581,7 +580,7 @@ all_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value, co
 all_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-103-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-54-1.png)<!-- -->
 
 ``` r
 ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value)) + 
@@ -593,7 +592,7 @@ ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = valu
 ensemble_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-104-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-55-1.png)<!-- -->
 
 ``` r
 ggplot(data= df_min_temp, aes(x = time, y = value)) + 
@@ -601,7 +600,7 @@ ggplot(data= df_min_temp, aes(x = time, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-104-2.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-55-2.png)<!-- -->
 
 ``` r
 all_climate_projections <- ggplot(data= df_precip, aes(x = time, y = value, color = variable)) + 
@@ -612,7 +611,7 @@ all_climate_projections <- ggplot(data= df_precip, aes(x = time, y = value, colo
 all_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-105-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-56-1.png)<!-- -->
 
 ``` r
 df_precip_2 <- df_precip[which(df_precip$value != 0),]
@@ -626,7 +625,7 @@ ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = time, y = valu
 ensemble_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-106-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-57-1.png)<!-- -->
 
 ``` r
 ggplot(data= df_precip, aes(x = time, y = value)) + 
@@ -634,7 +633,7 @@ ggplot(data= df_precip, aes(x = time, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-106-2.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-57-2.png)<!-- -->
 
 ``` r
 df_precip_quant_95 <- df_precip %>% 
@@ -684,4 +683,4 @@ ggplot(data= df_precip, aes(x = time, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-108-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-59-1.png)<!-- -->
