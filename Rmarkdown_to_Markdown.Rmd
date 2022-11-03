@@ -1,0 +1,16 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+
+library(rmarkdown)
+
+#render("Haskell.Rmd", md_document())
+
+render("Haskell.Rmd", md_document(variant = "gfm"))
+
+```
+
