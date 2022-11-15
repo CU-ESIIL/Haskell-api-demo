@@ -1,0 +1,438 @@
+---
+title: 'Sensing the Earth: CFT tutorial'
+output:
+  cleanrmd::html_document_clean:
+    theme: style-serif
+  html_document:
+    toc: yes
+    df_print: paged
+  pdf_document:
+    template: /Users/ty/Downloads/Eisvogel-2.0.0/eisvogel.latex
+    toc: yes
+    toc_depth: 2
+    number_sections: true
+    keep_tex: yes
+---
+\let\oldsection\section
+\renewcommand\section{\clearpage\oldsection}
+```{r}
+
+
+options(knitr.kable.NA = '')
+
+
+```
+
+# Climate futures for [Haskell Indian Nations University](https://www.haskell.edu)
+
+
+## Prepare your environment
+1. Install Climate Futures Toolbox
+
+```{r, eval=FALSE}
+install.packages("cft")
+```
+
+2. Load other packages
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidync)
+library(cft)
+library(sf)
+library(ggplot2)
+library(ggthemes)
+library(ggpattern)
+library(magick)
+library(future)
+library(tidytable)
+library(janitor)
+library(xts)
+options(timeout = 600L)
+
+library(reticulate)
+
+```
+
+```{r, eval=FALSE}
+conda_update(conda = "auto")
+py_install("numpy")
+py_install("matplotlib")
+py_install("pandas")
+py_install("statsmodels")
+
+
+```
+
+
+
+## Load saved output
+```{r, cache=TRUE}
+load(file = "haskell.RData")
+```
+
+```{r}
+available_times <- inputs[[2]]
+colnames(available_times)[1] <- "time"
+
+haskell_posix <- haskell %>%
+  left_join(available_times, by="time")
+  
+
+haskell_posix$dates <- as.POSIXct(haskell_posix$dates)
+class(haskell_posix$dates)
+
+colnames(haskell_posix)
+haskell_posix <- haskell_posix[,c(93,2, 1,3:92)]
+```
+
+
+
+```{r, cache=TRUE}
+df_precip <- haskell_posix %>%
+  st_drop_geometry() %>%
+  select(dates, which(startsWith(colnames(haskell), "pr"))) %>%
+  gather(key = "variable", value = "value", -dates)
+head(df_precip)
+```
+
+
+```{r, cache=TRUE}
+df_min_temp <- haskell_posix %>%
+  st_drop_geometry() %>%
+  select(dates, dates,  which(startsWith(colnames(haskell), "tasmin"))) %>%
+  gather(key = "variable", value = "value", -dates)
+
+df_min_temp <- df_min_temp[which(df_min_temp$value > 200), ]
+df_min_temp$variable <- as.character(as.numeric(as.factor(df_min_temp$variable)))
+
+#df_min_temp[,1] <- as.POSIXct(df_min_temp[,1])
+#df_min_temp_TS <- as.xts(df_min_temp[,-2])
+head(df_min_temp)
+
+save(df_min_temp, file="df_min_temp.rdata")
+```
+
+
+```{r, cache=TRUE}
+df_RH <- haskell %>%
+  st_drop_geometry() %>%
+  select(time,which(startsWith(colnames(haskell), "rhs")) ) %>%
+  gather(key = "variable", value = "value", -time)
+
+df_RH_min <- haskell %>%
+  st_drop_geometry() %>%
+  select(time,which(startsWith(colnames(haskell), "rhsmin"))) %>%
+  gather(key = "variable", value = "value", -time)
+
+df_RH_max <- haskell %>%
+  st_drop_geometry() %>%
+  select(time,which(startsWith(colnames(haskell), "rhsmax"))) %>%
+  gather(key = "variable", value = "value", -time)
+head(df_RH_max)
+```
+
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+all_climate_projections_RH <- ggplot(data= df_RH, aes(x = time, y = value, color = variable)) + 
+  #geom_line()+
+  
+  scale_colour_viridis_d(option="A", alpha = 0.8) +
+  geom_smooth() +
+  theme_tufte() +
+  theme(legend.position = "none") 
+  
+
+all_climate_projections_RH
+```
+
+
+
+
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )+ 
+  geom_smooth(data= df_RH_min, color=our_purple) +
+  geom_smooth(data= df_RH_max, color=our_purple) +
+  theme_tufte() +
+  ylim(0,100)
+  
+
+all_climate_projections_RH
+```
+
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+
+
+all_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value, color = variable)) + 
+  geom_line()+
+  geom_smooth() +
+  scale_colour_viridis_d(option="A")
+  
+
+all_climate_projections
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+
+
+ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value)) + 
+  geom_line(color=our_purple)+
+  geom_smooth(color=our_yellow) +
+  theme_tufte()
+  
+
+ensemble_climate_projections
+
+
+ggplot(data= df_min_temp, aes(x = time, y = value)) + 
+  geom_smooth(color=our_purple) +
+  theme_tufte()
+```
+
+
+```{r}
+library(stats)
+convert.fft <- function(cs, sample.rate=1) {
+  cs <- cs / length(cs) # normalize
+
+  distance.center <- function(c)signif( Mod(c),        4)
+  angle           <- function(c)signif( 180*Arg(c)/pi, 3)
+  
+  df <- data.frame(cycle    = 0:(length(cs)-1),
+                   freq     = 0:(length(cs)-1) * sample.rate / length(cs),
+                   strength = sapply(cs, distance.center),
+                   delay    = sapply(cs, angle))
+  df
+}
+
+out_fft <- convert.fft(fft(temp_pass$value))
+```
+
+```{r}
+ggplot(data=out_fft) +
+  geom_line(aes(x=cycle, y=log(strength)))
+```
+
+
+
+```{r}
+library(reticulate)
+x <- r_to_py(df_min_temp$dates)
+ y <- r_to_py(df_min_temp$value)
+ 
+ 
+  temp_pass <- df_min_temp %>%
+  select(dates, value) %>% 
+  distinct(dates, .keep_all= TRUE) %>%
+    as.data.frame()
+   
+ row.names(temp_pass) <- as.character(temp_pass$dates)
+ temp_pass
+ 
+ x <- r_to_py(temp_pass$dates)
+ y <- r_to_py(temp_pass$value)
+ 
+ minTemp <- r_to_py(temp_pass[,2])
+ 
+ 
+```
+
+
+
+
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+ 
+x = list(range(len(r.x)))
+y = r.y
+
+# apply fast fourier transform and take absolute values
+f=abs(np.fft.fft(r.y))
+
+# get the list of frequencies
+num=np.size(x)
+freq = [i / num for i in list(range(num))]
+
+# get the list of spectrums
+spectrum=f.real*f.real+f.imag*f.imag
+nspectrum=spectrum/spectrum[0]
+
+
+plt.clf()
+# plot nspectrum per frequency, with a semilog scale on nspectrum
+plt.semilogy(freq,nspectrum)
+
+
+plt.show()
+```
+
+
+```{python}
+# improve the plot by adding periods in number of weeks rather than  frequency
+import pandas as pd
+results = pd.DataFrame({'freq': freq, 'nspectrum': nspectrum})
+results['period'] = results['freq'] / (1/52)
+
+plt.clf()
+plt.semilogy(results['period'], results['nspectrum'])
+plt.show()
+```
+
+
+```{python}
+
+# improve the plot by converting the data into grouped per week to avoid peaks
+results['period_round'] = results['period'].round()
+grouped_week = results.groupby('period_round')['nspectrum'].sum()
+
+plt.clf()
+plt.semilogy(grouped_week.index, grouped_week)
+plt.xticks([1, 13, 26, 39, 52])
+plt.show()
+```
+
+```{python}
+import statsmodels.api as sm
+decompfreq = 24*60/15*7
+res = sm.tsa.seasonal_decompose(r.y, freq=decompfreq)
+plt.clf()
+resplot = res.plot()
+plt.show()
+```
+
+
+```{r, eval=FALSE}
+library(fable)
+library(tsibble)
+library(tsibbledata)
+library(lubridate)
+library(dplyr)
+
+
+
+tourism_melb <- tourism %>%
+  filter(Region == "Melbourne")
+tourism_melb %>%
+  group_by(Purpose) %>%
+  slice(1)
+
+
+fit <- tourism_melb %>%
+  model(
+    ets = ETS(Trips ~ trend("A")),
+    arima = ARIMA(Trips)
+  )
+fit
+
+
+
+
+
+library(ggfortify)
+df_min_temp$time
+s1 <- survfit(Surv(time=time, event=value) ~ type, data=df_min_temp)
+library(timeSeries)
+as.timeSeries(df_min_temp) %>%
+  drop(variable)
+  autoplot()
+autoplot(df_min_temp, ts.colour = ('dodgerblue3'))
+library(xts)
+autoplot(as.xts(AirPassengers), ts.colour = 'green')
+
+tourism_melb %>%
+   
+  autoplot(Trips)
+```
+
+
+```{r}
+library(xts)
+haskell_posix %>%
+  
+
+autoplot(as.xts(), ts.colour = 'green')
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+
+
+all_climate_projections <- ggplot(data= df_precip, aes(x = time, y = value, color = variable)) + 
+  geom_line(color=our_purple)+
+  theme_tufte()
+  
+
+all_climate_projections
+```
+
+```{r, cache=TRUE, warning=FALSE,  message=FALSE}
+
+df_precip_2 <- df_precip[which(df_precip$value != 0),]
+
+ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = time, y = value)) + 
+   geom_line(color=our_purple)+
+  geom_smooth(color=our_yellow)+
+  theme_tufte()
+  
+
+ensemble_climate_projections
+
+ggplot(data= df_precip, aes(x = time, y = value)) + 
+     geom_smooth(color=our_purple)+
+  theme_tufte()
+```
+
+
+```{r, cache=TRUE}
+df_precip_quant_95 <- df_precip %>% 
+  mutate(quant = ntile(value, 100)) %>%
+  filter(quant == 95)
+
+df_precip_quant_96 <- df_precip %>% 
+  mutate(quant = ntile(value, 100)) %>%
+  filter(quant == 96)
+
+df_precip_quant_97 <- df_precip %>% 
+  mutate(quant = ntile(value, 100)) %>%
+  filter(quant == 97)
+
+df_precip_quant_98 <- df_precip %>% 
+  mutate(quant = ntile(value, 100)) %>%
+  filter(quant == 98)
+
+df_precip_quant_99 <- df_precip %>% 
+  mutate(quant = ntile(value, 100)) %>%
+  filter(quant == 99)
+
+df_precip_quant_100 <- df_precip %>% 
+  mutate(quant = ntile(value, 100)) %>%
+  filter(quant == 100)
+
+df_precip_quant_1000 <- df_precip %>% 
+  mutate(quant = ntile(value, 1000)) %>%
+  filter(quant == 1000)
+
+df_precip_quant_100000 <- df_precip %>% 
+  mutate(quant = ntile(value, 100000)) %>%
+  filter(quant == 100000)
+```
+
+
+
+
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+ggplot(data= df_precip, aes(x = time, y = value)) + 
+     geom_smooth(data= df_precip, color=our_purple)+ 
+     geom_smooth(data= df_precip_quant_95, color=our_purple) +
+    geom_smooth(data= df_precip_quant_96, color=our_purple) +
+    geom_smooth(data= df_precip_quant_97, color=our_purple) +
+    geom_smooth(data= df_precip_quant_98, color=our_purple) +
+    geom_smooth(data= df_precip_quant_99, color=our_purple) +
+  geom_smooth(data= df_precip_quant_100, color=our_purple) +
+  geom_smooth(data= df_precip_quant_1000, color=our_purple) +
+    geom_smooth(data= df_precip_quant_100000, color=our_purple) +
+  theme_tufte()
+```

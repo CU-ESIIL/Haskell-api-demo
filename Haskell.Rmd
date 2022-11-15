@@ -46,7 +46,44 @@ library(magick)
 library(future)
 library(tidytable)
 library(janitor)
-options(timeout = 600L)
+options(timeout = 600)
+library(ggfortify)
+library(forecast)
+library(reticulate)
+library(osmdata)
+library(osmextract)
+```
+
+```{r, eval=FALSE}
+conda_update(conda = "auto")
+py_install("numpy")
+py_install("matplotlib")
+py_install("pandas")
+py_install("statsmodels")
+py_install("osmnx")
+py_install("geopandas")
+
+```
+
+### Set your color palette
+1. Download the Haskell university logo
+```{r, cache=TRUE, warning=FALSE, message=FALSE, fig.cap="This is the Haskell logo that I downloaded to this working directory from the schools website. This is the only element that we haven't retrieved directly through and API."}
+seamless_image_filenames <- c(
+  'Haskell_logo copy.png'
+)
+
+```
+![](Haskell_logo.png){width=50%}
+
+
+
+2. Sample the colors on that logo to make a custom color palette for our basemap
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+our_blue <- "#3A4E8B"
+our_yellow <- "#FFD60F"
+our_beige <- "#EDEDF0"
+our_purple <- "#3E1471"
+
 ```
 
 ## Finding basic layers in OpenStreetMap
@@ -56,11 +93,258 @@ options(timeout = 600L)
 1. Find the general area on Open Street Map
 We use a function from the osmdata package to find a bounding box for our area of interest. This is a nice function for this purpose because it can use plan language declarations (e.g. "Lawrence, Kansas" or "Boulder, Colorado") for the location. 
   You do not need to use this function to define a bounding box. You can define your bounding box from any source. The benefit of this method is that is it is rather easy and reliable. 
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 bb <- getbb("Lawrence, Kansas")
 bb
 ```
 
+If you format your request a little differently, then it will return the more complex polygon for the bounding box. 
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+bb_sf <- getbb("Lawrence, Kansas", format_out = "sf_polygon")
+ggplot(data=bb_sf$multipolygon) + geom_sf(fill=our_beige, color=our_purple) + theme_tufte()
+```
+
+
+
+
+2. Find any buildings associated with any University in our "Lawrence, Kansas" bounding box.
+
+#### Using the package osmdata
+  This request first calls the opq() function, which mounts to the OpenStreetMap database and then queries the "building" key (i.e. all the building footprints) for any building types matching the value "university". This is a representation of the "key" and "value" system that OSM uses to query data. The final step is to convert the OSM output into a spatial format that works well in R, called sf. 
+```{r, eval=FALSE, cache=TRUE, warning=FALSE, message=FALSE}
+library(osmdata)
+University_buildings <- 
+  opq(bb) %>% 
+  add_osm_feature(key = "building", value = "university") %>% 
+  osmdata_sf()
+```
+  
+  The output from this request shows a list of multipolygons, polygons, linestrings, and points. Each of these data types have a different storage structure, so we can't look at them all at the same time. Instead, lets start with polygons, which likely represent a single building footprint. Printing 'my_boundary$osm_polygons' shows that there are two Universities in Lawrence and we need to filter those results down to only include Haskell building.
+```{r, eval = FALSE, cache=TRUE, warning=FALSE, message=FALSE}
+University_buildings <- University_buildings$osm_polygons
+```
+
+
+#### Using the package osmextract 
+  The package OSMextract is calling the same OSM API, but it does it in a slightly different way that can make if faster but also requires a little better understanding of what you're looking for. For example, by default OSM extract only downloads the first 25 columns as their own column and clumps the rest into a list that is difficult to read. You can add columns to the api call as I did here (e.g. extra_tags = c("operator)) and it will return that column as a column instead of in the list. You can also parse the list yourself or use osmdata() to download a sample and then use osmextract to execute larger downloads. This package usually clumps polygons and multipolygons by default so, you just ask for multipolygons and get both back. 
+  
+```{r, fig.cap="Buildings labeled 'Haskell' in OSM", cache=TRUE, warning=FALSE, message=FALSE}
+library(osmextract)
+University_buildings <- oe_get(
+  place = "Lawrence, Kansas", 
+  layer = "multipolygons",
+  query = "SELECT * FROM multipolygons WHERE building IN ('university')",
+  quiet = TRUE,
+  extra_tags = c("operator")
+)
+
+colnames(University_buildings)
+```
+ 3.  Use the 'operator' column to identify the owner of those buildings and filter down to building operated by Haskell Indian Nations University.
+ 
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+Haskell_university_buildings <- University_buildings %>% 
+  filter(operator == "Haskell Indian Nations University") 
+Haskell_university_buildings1 <- Haskell_university_buildings[1,] #take the first building (e.g. first row) of the returns
+head(Haskell_university_buildings1)
+```
+
+  The janitor package is useful for performing automated cleaning tasks on your data. Here we remove all of the columns that contain no data to make our dataframe much smaller and easier to read. 
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+boundaries1 <- janitor::remove_empty(as.data.frame(Haskell_university_buildings1), which = "cols")
+boundaries1
+```
+
+4. Plot our discovered footprint to visually confirm
+ It looks like we found [Winona Hall](https://www.kansasmemory.org/item/449914) in the OpenStreetMap database. This is how we plot the perimeters associated with it. ![Winona Hall](winona hall haskell.png)
+ 
+```{r,  fig.width=12, fig.height=3, fig.cap="This seems to match.", cache=TRUE, warning=FALSE, message=FALSE}
+basemap <- ggplot(data = st_as_sf(boundaries1)) +
+  geom_sf(fill = our_purple, color=our_yellow) +
+  geom_sf_text(aes(label = name), size=10, color=our_yellow) +
+  theme_tufte()
+
+basemap
+```
+#### OSM in python using osmnx
+  The python interface for OSM uses a slightly different syntax to write the requests, but it's calling the same OSM api that the R packages call. You still submit a plain-language area-of-interest, a value, and a key. Those three inputs will return a list of points, lines, and polygons for you to use and manipulate. 
+```{python, eval=TRUE, cache=TRUE, warning=FALSE, message=FALSE}
+place_name = "Lawrence, Kansas"
+
+# import osmnx
+import osmnx as ox
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+# Get place boundary related to the place name as a geodataframe
+area = ox.geocode_to_gdf(place_name)
+type(area)
+
+
+# List key-value pairs for tags
+tags = {'building': 'university'}   
+
+
+buildings = ox.geometries_from_place(place_name, tags)
+buildings.plot()
+plt.show()
+```
+
+## Build a basemap from OpenStreetMap
+
+### Download all the layers you want to include in your basemap
+
+1. Download the Haskell University footprint
+```{r,  warning=FALSE, message=FALSE, fig.cap="Buildings labeled 'Haskell' in OSM", cache=TRUE}
+
+amenity_poly <- oe_get(
+  place = "Lawrence, Kansas", 
+  layer = "multipolygons",
+  query = "SELECT * FROM multipolygons WHERE amenity IN ('university')",
+  quiet = TRUE,
+  extra_tags = c("operator")
+)
+
+
+haskell_poly <- amenity_poly %>%
+  filter(name =='Haskell Indian Nations University') %>%
+  st_as_sf()
+```
+
+```{r ,warning=FALSE, message=FALSE, echo=FALSE}
+ggplot() +
+   geom_sf( data=haskell_poly, color=our_yellow, size=0.5) +
+  geom_sf_pattern( 
+     data = haskell_poly,
+     size=0,
+    pattern       = 'image',
+    pattern_type  = 'tile',
+    pattern_scale =0.1,
+    pattern_filename = seamless_image_filenames
+  ) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = our_purple),
+        plot.background = element_rect(fill = NA)) 
+```
+
+
+2. Download street vector layers
+  The street vector is divided into two different downloads in order to create two different objects for coloring in the final figure. This first download will be in the foreground. It includes the larger and faster roadways. 
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+# the big streets
+big_streets_lines <- oe_get(
+  place = "Lawrence, Kansas", 
+  layer = "lines",
+  query = "SELECT * FROM lines WHERE highway IN ('motorway', 'trunk',  'primary',  'secondary', 'tertiary')",
+  quiet = TRUE
+)
+
+streets_crop <- big_streets_lines %>%
+  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
+```
+
+```{r ,warning=FALSE, message=FALSE, echo=FALSE}
+ggplot() +
+   geom_sf( data=streets_crop, color=our_yellow, size=0.5) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = our_purple),
+        plot.background = element_rect(fill = NA)) 
+```
+
+The second street download is for the small side streets and footpaths. These lines will be more faint and in the background. 
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+small_streets <- oe_get(
+  place = "Lawrence, Kansas", 
+  layer = "lines",
+  query = "SELECT * FROM lines WHERE highway IN ('residential', 'living',  'unclassified',  'service', 'footway')",
+  quiet = TRUE
+)
+
+small_streets_crop <- small_streets %>%
+  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
+```
+
+```{r ,warning=FALSE, message=FALSE, echo=FALSE}
+ggplot() +
+   geom_sf( data=small_streets_crop, color=our_beige, size=0.5, alpha=0.4) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = our_purple),
+        plot.background = element_rect(fill = NA)) 
+```
+
+
+
+3. Download water features. 
+  The water features are first divided into moving and stationary water. We will download the river layer from the waterway key. 
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+water <- oe_get(
+  place = "Lawrence, Kansas", 
+  layer = "lines",
+  query = "SELECT * FROM lines WHERE waterway IN ('river')",
+  quiet = TRUE
+)
+```
+
+We divide the water into large and small waterways in the same way we did with the road. We are interested in making the main river much larger and the remaining waterways collectively smaller. The Kansas river is the large feature in this map so, we pull it out first. 
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+Kansas_river_multi <- water %>%
+  filter(name == "Kansas River")  %>% 
+  st_as_sf() %>%
+  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
+```
+
+```{r ,warning=FALSE, message=FALSE, echo=FALSE}
+ggplot() +
+   geom_sf( data=Kansas_river_multi, color=our_blue, size=3, alpha=1) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = our_purple),
+        plot.background = element_rect(fill = NA)) 
+```
+
+After removing the Kansas river, we are left with a number of remaining waterways that are stored as both linestrings and multilinestrings. We need to download each of those data types individually. 
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+small_water_lines <- water %>%
+  filter(name != "Kansas River")%>%
+  st_as_sf() %>%
+  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
+```
+
+```{r ,warning=FALSE, message=FALSE, echo=FALSE}
+ggplot() +
+   geom_sf( data=small_water_lines, color=our_blue, size=3, alpha=1) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = our_purple),
+        plot.background = element_rect(fill = NA)) 
+```
+
+The stationary water bodies are a subcategory under the key=natural and the value=water. We ask for the extra column named water to be include in our returned sf table. We can use that column to filter our the lakes and reservours as local water bodies. 
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+# Request all water features using natural:water but also request the water tag be given it's own column. 
+water_body <- oe_get(
+  place = "Lawrence, Kansas", 
+  layer = "multipolygons",
+  query = "SELECT * FROM multipolygons WHERE natural IN ('water')",
+  quiet = TRUE,
+  extra_tags = c("water") #give water it's own column instead of clumping in supplimentary list
+)
+
+water_body_crop <- water_body %>%
+  filter(water == 'lake' | water == "reservoir") %>%
+  st_as_sf() 
+```
+
+```{r ,warning=FALSE, message=FALSE, echo=FALSE}
+ggplot() +
+   geom_sf( data=water_body_crop, color=our_blue, fill=our_blue, size=1, alpha=1) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = our_purple),
+        plot.background = element_rect(fill = NA)) 
+```
+
+
+### Stack downloaded OSM layers into a final basemap.
+
+This is a special edit to manually shift the bounding box so that it better centered Haskell University in the basemap. Most people will not need this adjustment but may enjoy the ability to microadjust their basemap.  
 ```{r, warning=FALSE, message=FALSE, cache=TRUE}
 bbb <- bb
 bbb[1,1] <- bbb[1,1] - 0.001
@@ -73,269 +357,16 @@ xmid <- xlimit[1] + diff(xlimit) / 2
 ratio <- diff(xlimit) / diff(ylimit)
 ```
 
-2. Find any buildings associated with any University in our "Lawrence, Kansas" bounding box. 
-  This request first calls the opq() function, which mounts to the OpenStreetMap database and then queries the "building" key (i.e. all the building footprints) for any building types matching the value "university". This is a representation of the "key" and "value" system that OSM uses to query data. The final step is to convert the OSM output into a spatial format that works well in R, called sf. 
-  
-```{r, fig.cap="Buildings labeled 'Haskell' in OSM", cache=TRUE}
-my_boundary <- opq(bb) %>% 
-  add_osm_feature(key = "building", value = "university") %>% 
-osmdata_sf() 
-
-summary(my_boundary)
-```
- 3. The output from this request shows a list of multipolygons, polygons, linestrings, and points. Each of these data types have a different storage structure, so we can't look at them all at the same time. Instead, lets start with polygons, which likely represent a single building footprint. Printing 'my_boundary$osm_polygons' shows that there are two Universities in Lawrence and we need to filter those results down to only include Haskell building. 
-```{r, cache=TRUE}
-boundaries <- my_boundary$osm_polygons %>% 
-  filter(operator == "Haskell Indian Nations University") 
-boundaries1 <- boundaries[1,] #take the first building (e.g. first row) of the returns
-```
-
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-boundaries1 <- janitor::remove_empty(as.data.frame(boundaries1), which = "cols")
-boundaries1
-```
-
-4. Plot our discovered footprint to visually confirm
- It looks like we found [Winona Hall](https://www.kansasmemory.org/item/449914) in the OpenStreetMap database. This is how we plot the perimeters associated with it. ![Winona Hall](winona hall haskell.png)
- 
-```{r, warning=FALSE, fig.width=12, fig.height=3, fig.cap="This seems to match.", cache=TRUE}
-
-basemap <- ggplot(data = st_as_sf(boundaries1)) +
-  geom_sf(fill = "blueviolet") +
-  geom_sf_text(aes(label = name), size=10) +
-  theme_tufte()
-
-basemap
-```
-
-
-## Build a basemap from OpenStreetMap
-
-### Set your color palette
-1. Download the Haskell university logo
-```{r, cache=TRUE, warning=FALSE, message=FALSE, fig.cap="This is the Haskell logo that I downloaded to this working directory from the schools website. This is the only element that we haven't retrieved directly through and API."}
-seamless_image_filenames <- c(
-  'Haskell_logo copy.jpg'
-)
-
-```
-![](Haskell_logo.png){width=50%}
-
-
-
-2. Sample the colors on that logo to make a custom color palette for our basemap
-```{r, cache=TRUE}
-our_blue <- "#3A4E8B"
-our_yellow <- "#FFD60F"
-our_beige <- "#EDEDF0"
-our_purple <- "#3E1471"
-our_purple_alpha <- "#3E1471999"
-```
-
-
-
-### Download all the layers you want to include in your basemap
-
-1. Download the Haskell University footprint
-```{r,  warning=FALSE, message=FALSE, fig.cap="Buildings labeled 'Haskell' in OSM", cache=TRUE}
-my_boundary <- opq(bb) %>% 
-  add_osm_feature(key = "amenity", value = "university") %>% 
-osmdata_sf() 
-
-haskell_poly <- my_boundary$osm_multipolygons[1,]
-```
-
-```{r ,warning=FALSE, message=FALSE, echo=FALSE}
-ggplot() +
-   geom_sf( data=haskell_poly, color=our_yellow, size=0.5) +
-  geom_sf_pattern( 
-     data = haskell_poly,
-     size=0,
-    pattern       = 'image',
-    pattern_type  = 'tile',
-    pattern_scale =0.4,
-    pattern_filename = seamless_image_filenames
-  ) +
-  theme_void() +
-  theme(panel.background = element_rect(fill = our_purple),
-        plot.background = element_rect(fill = NA)) +
-   coord_sf(ylim = ylimit, xlim = xlimit, expand = TRUE)
-  
-```
-
-
-2. Download street vector layers
-  The street vector is divided into two different downloads in order to create two different objects for coloring in the final figure. This first download will be in the foreground. It includes the larger and faster roadways. 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
-# the big streets
-streets <- 
-  opq(bb) %>% 
-  add_osm_feature(key = "highway", 
-                  value = c("motorway", "trunk",  "primary", 
-                            "secondary", "tertiary")) %>% 
-  osmdata_sf() 
-
-streets_crop <- streets$osm_lines %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-
-```
-
-```{r ,warning=FALSE, message=FALSE, echo=FALSE}
-ggplot() +
-   geom_sf( data=streets_crop, color=our_yellow, size=0.5) +
-  theme_void() +
-  theme(panel.background = element_rect(fill = our_purple),
-        plot.background = element_rect(fill = NA)) +
-   coord_sf(ylim = ylimit, xlim = xlimit, expand = TRUE)
-  
-```
-
-The second street download is for the small side streets and footpaths. These lines will be more faint and in the background. 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
-small_streets <-  
-  opq(bb) %>% 
-  add_osm_feature(
-    key = "highway", 
-    value = c("residential", "living", "unclassified", 
-              "service", "footway")) %>% 
-  osmdata_sf()
-
-small_streets_crop <- small_streets$osm_lines %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-
-```
-
-```{r ,warning=FALSE, message=FALSE, echo=FALSE}
-ggplot() +
-   geom_sf( data=small_streets_crop, color=our_beige, size=0.5, alpha=0.4) +
-  theme_void() +
-  theme(panel.background = element_rect(fill = our_purple),
-        plot.background = element_rect(fill = NA)) +
-   coord_sf(ylim = ylimit, xlim = xlimit, expand = TRUE)
-  
-```
-
-
-
-3. Download water features. 
-  The water features are first divided into moving and stationary water. We will download the river layer from the waterway key. 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
-water <- 
-  opq(bb) %>% 
-  add_osm_feature(key = "waterway", value = "river") %>% 
-  osmdata_sf()
-```
-
-We divide the water into large and small waterways in the same way we did with the road. We are interested in making the main river much larger and the remaining waterways collectively smaller. The Kansas river is the large feature in this map so, we pull it out first. 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
-Kansas_river_multi <- water$osm_multilines %>%
-  filter(name == "Kansas River")  %>% 
-  st_as_sf() %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-```
-
-```{r ,warning=FALSE, message=FALSE, echo=FALSE}
-ggplot() +
-   geom_sf( data=Kansas_river_multi, color=our_blue, size=3, alpha=1) +
-  theme_void() +
-  theme(panel.background = element_rect(fill = our_purple),
-        plot.background = element_rect(fill = NA)) +
-   coord_sf(ylim = ylimit, xlim = xlimit, expand = TRUE)
-  
-```
-
-After removing the Kansas river, we are left with a number of remaining waterways that are stored as both linestrings and multilinestrings. We need to download each of those data types individually. 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
-small_water_multi <- water$osm_multilines %>%
-  filter(name != "Kansas River")%>%
-  st_as_sf() %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-
-small_water_lines <- water$osm_lines %>%
-  filter(name != "Kansas River")%>%
-  st_as_sf() %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-```
-
-```{r ,warning=FALSE, message=FALSE, echo=FALSE}
-ggplot() +
-  geom_sf( data=small_water_multi, color=our_blue, size=3, alpha=1) +
-   geom_sf( data=small_water_lines, color=our_blue, size=3, alpha=1) +
-  theme_void() +
-  theme(panel.background = element_rect(fill = our_purple),
-        plot.background = element_rect(fill = NA)) +
-   coord_sf(ylim = ylimit, xlim = xlimit, expand = TRUE)
-  
-```
-
-The stationary water bodies are divided into two categories: lakes and reservoirs. We need to pull each of these individually. First, the reservoir. 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
-reservoir <- 
-  opq(bb) %>% 
-  add_osm_feature(key = "water", value = "reservoir") %>% 
-  osmdata_sf()
-
-reservoir_crop_multi <- reservoir$osm_multipolygons %>%
-  st_as_sf() %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-
-reservoir_crop_poly <- reservoir$osm_multipolygons %>%
-  st_as_sf() %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-
-reservoir_crop <- cbind(reservoir_crop_multi, reservoir_crop_poly)
-
-```
-
-```{r ,warning=FALSE, message=FALSE, echo=FALSE}
-ggplot() +
-   geom_sf( data=reservoir_crop, color=our_blue, fill=our_blue, size=1, alpha=1) +
-  theme_void() +
-  theme(panel.background = element_rect(fill = our_purple),
-        plot.background = element_rect(fill = NA)) +
-   coord_sf(ylim = ylimit, xlim = xlimit, expand = TRUE)
-  
-```
-
-Now the lakes. 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
-lake <- 
-  opq(bb) %>% 
-  add_osm_feature(key = "water", value = "lake") %>% 
-  osmdata_sf()
-
-lake_crop <- lake$osm_polygons %>%
-  st_as_sf() %>%
-  st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
-
-
-```
-
-```{r ,warning=FALSE, message=FALSE, echo=FALSE}
-ggplot() +
-   geom_sf( data=lake_crop, color=our_blue, fill=our_blue, size=1, alpha=1) +
-  theme_void() +
-  theme(panel.background = element_rect(fill = our_purple),
-        plot.background = element_rect(fill = NA)) +
-   coord_sf(ylim = ylimit, xlim = xlimit, expand = TRUE)
-  
-```
-
-
-### Stack downloaded OSM layers into a final basemap.
-  
+This is a long plot that calls each of the plot layers in order from the back to the front. There is a section at the end that crop, format, and append the basemap. 
 ```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=12, fig.cap="This seems to match.", cache=TRUE}
 haskel_basemap <- ggplot() +
   # plot moving water layers first
   geom_sf(data = Kansas_river_multi, alpha = .8,
           size = 3, colour = our_blue) +
-  geom_sf(data = small_water_multi, alpha = .8,
-          size = 0.5, colour = our_blue) +
   geom_sf(data = small_water_lines, alpha = .8,
           size = 0.5, colour = our_blue) +
   # Layer bodies of water over the moving water layers
-  geom_sf(data = lake_crop, alpha = 1, fill = our_blue, size=0) +
-  geom_sf(data = reservoir_crop, alpha = 1, fill = our_blue, size=0) +
+  geom_sf(data = water_body_crop, alpha = 1, fill = our_blue, size=0) +
   
   # Plot small streets in the background with a light fade
   geom_sf(data = small_streets_crop, alpha = .6, 
@@ -344,14 +375,14 @@ haskel_basemap <- ggplot() +
   geom_sf(data = streets_crop, alpha = .8, 
           size = .4, colour = our_yellow ) +
   # Layer Haskell university property polygon in the foreground
-  geom_sf( data=haskell_poly, color=our_yellow, size=0.5) +
+  geom_sf( data=haskell_poly, color=our_yellow, size=1) +
   # Fill Haskell property polygon with Haskell logo
    geom_sf_pattern( 
      data = haskell_poly,
      size=0,
     pattern       = 'image',
     pattern_type  = 'tile',
-    pattern_scale = 1.1,
+    pattern_scale = 0.06,
     pattern_filename = seamless_image_filenames
   ) +
   # set limits on final figure 
@@ -419,7 +450,6 @@ ggsave(climate_grid, filename = "climate_grid.png", height = 11, width=8.5,
        units="in", dpi=600)
 ```
 ![](climate_grid.png)
-
 1. We calculate the center point for measuring to the nearest climate data point. 
 ```{r, warning=FALSE, message=FALSE, cache=TRUE}
 haskel_centroid <- st_coordinates(st_centroid(haskell_poly))
@@ -438,7 +468,6 @@ lons <- src %>% activate("D2") %>% hyper_tibble()
 lats <- src %>% activate("D1") %>% hyper_tibble()
 ```
 
-
 3. Search through the database of climate prediction points to find which one is closest to our centroid. We then spatially project that chosen pt into an sf object. 
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
 known_lon <- lons[which(abs(lons-lon_pt)==min(abs(lons-lon_pt))),]
@@ -446,7 +475,6 @@ known_lat <- lats[which(abs(lats-lat_pt)==min(abs(lats-lat_pt))),]
 
 chosen_pt <- st_as_sf(cbind(known_lon,known_lat), coords = c("lon", "lat"), crs = "WGS84", agr = "constant")
 ```
-
 
 ```{r, cache=TRUE, echo=FALSE,warning=FALSE, message=FALSE}
 l <- st_union(st_centroid(haskell_poly),st_as_sf(chosen_pt) ) %>% 
@@ -474,9 +502,9 @@ ggsave(grid_match, filename = "grid_match.png", height = 5, width=4,
 ```
 ![](grid_match.png)
 
-## Downloading climate data for our bounding box. 
+## Find and transfer climate data from an API 
 
-### Connect to the downscaled dataset. 
+### Mount to the downscaled dataset and transfer metadata. 
   We cannot download the entire dataset. Instead, we mount to that dataset by connecting to an api that route us to a particular part of the dataset based on the bounding box specified. 
    Mount to the USGS downscaled dataset. The resultant object called 'input' includes three elements The first is the full list of available data at each timestep. The second is a list of possible time steps. The third is a list of verbatim copy of the raw return from the server. This raw return shows the dimensions of the data and how many elements are available in each of those dimensions. 
 ```{r, cache=TRUE}
@@ -497,9 +525,10 @@ head(unique(inputs[[1]]$Variable))
 Element 3. Dataframe of available times
 ```{r}
 head(inputs[[2]])
+tail(inputs[[2]])
 ```
 
-## Compile your data request to send to the server.
+### Decide which Variables, Scenarios, and Models you want to request
 Your data order needs to include three things: Variable, Scenario, and Model. Your options can be found in the input elements we explored in the previous section. 
 ```{r, cache=TRUE}
 input_variables <- inputs$variable_names %>% 
@@ -539,86 +568,298 @@ head(as.data.frame(input_variables))
 
 
 
-```{r, eval=FALSE, cache=TRUE, include=FALSE}
-times <- inputs$available_times
-
-start_time <- Sys.time()
-
-Pulled_data_single_space_single_timepoint <- inputs$src %>% 
-  hyper_filter(lat = lat <= c(center_point[4]+0.05) & lat >= c(center_point[2]-0.05)) %>% 
-  hyper_filter(lon = lon <= c(center_point[3]+0.05) & lon >= c(center_point[1]-0.05)) %>%
-  #hyper_filter(time = times$`Available times` ==  44558) %>% 
-  hyper_tibble(select_var = input_variables[1:38]) %>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326, agr = "constant") 
-
-end_time <- Sys.time()
-print(end_time - start_time)
-```
-
-## Prepare for parallelization
+### Prepare for parallelization
+  We have requested enough information to exceed our download limit and we need to implement a 'parallel' approach to get all the data we want. This strategy has each of the cores in your computer act as their own computer and individually make small requests from the server and then assemble all the little chunks into the final dataset you requested. Here we tell our computer that we are about to send a parallel request and tell the computer how we want to destribute the tasks we send. 
 ```{r, eval=FALSE, cache=TRUE}
+# ask how many cores are available to be farmed out. I subtract one so I still have a core to use for controlling the whole process. 
 n_cores <- availableCores() - 1
+
+# set plan to take all cores except one. 
 plan(multisession, workers = n_cores)
 ```
 
-## Make parallel call to USGS server.
+### Make parallel call to USGS server.
+This is the parallel function from the CFT package. It will shuttle all the data you requested, through all the cores you specified, for the latitude and longitude you requested. This took about 45 minutes on my home laptop with fiber internet. Virtual machines usually only have one core. If you're running this in the cloud, you may need to do some special configuration to get this to actually parallelize.   
 ```{r, eval=FALSE, cache=TRUE}
 out <- single_point_firehose(input_variables, known_lat, known_lon )
 head(out)
 ```
 
-## Save output
+### Save output
+  To save time, I have run the api request above and saved the results for future use. There is no reason to run the api request over and over again. It's easy to save the data once their downloaded and save yourself the download again in the future. 
 ```{r, eval=FALSE, cache=TRUE}
 haskell <- out
 save(haskell, file = "haskell.RData")
 ```
 
-## Load saved output
+### Load saved output
+  If I have run my api request and saved it to my working directory, then I can load it from here anytime I need. This will save you time as you experiment with different downstream analyes. 
 ```{r, cache=TRUE}
 load(file = "haskell.RData")
 ```
 
 
-```{r, cache=TRUE}
-df_precip <- haskell %>%
-  st_drop_geometry() %>%
-  select(time, which(startsWith(colnames(haskell), "pr"))) %>%
-  gather(key = "variable", value = "value", -time)
-head(df_precip)
+## Organize climate data
+
+### Join data with dates 
+```{r}
+# make the time output into it's own dataframe and change column name
+available_times <- inputs[[2]]
+colnames(available_times)[1] <- "time"
+
+# left join the time data into the spatial data
+haskell_posix <- haskell %>%
+  left_join(available_times, by="time")
+  
+# convert time format into POSIX, which is a format that deals with all the confusion of time and data formats (e.g. time zones and translation between numbers and word descriptions for time)
+haskell_posix$dates <- as.POSIXct(haskell_posix$dates)
+class(haskell_posix$dates)
+
+#reorder so that dates are the first column
+haskell_posix <- haskell_posix[,c(93,2, 1,3:92)]
+colnames(haskell_posix)
 ```
 
+### Temperature
 
+#### Minimum temperature
 ```{r, cache=TRUE}
-df_min_temp <- haskell %>%
+df_min_temp <- haskell_posix %>%
   st_drop_geometry() %>%
-  select(time, which(startsWith(colnames(haskell), "tasmin"))) %>%
-  gather(key = "variable", value = "value", -time)
+  select(dates, dates,  which(startsWith(colnames(haskell), "tasmin"))) %>%
+  gather(key = "variable", value = "value", -dates)
 
 df_min_temp <- df_min_temp[which(df_min_temp$value > 200), ]
 df_min_temp$variable <- as.character(as.numeric(as.factor(df_min_temp$variable)))
 
+#df_min_temp_TS <- as.xts(df_min_temp)
 head(df_min_temp)
 ```
 
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 
+
+all_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value, color = variable)) + 
+  geom_line()+
+  geom_smooth() +
+  scale_colour_viridis_d(option="A")
+  
+
+all_climate_projections
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+
+
+ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value)) + 
+  geom_line(color=our_purple)+
+  geom_smooth(color=our_yellow) +
+  theme_tufte()
+  
+
+ensemble_climate_projections
+```
+
+
+```{r}
+library(stats)
+convert.fft <- function(cs, sample.rate=1) {
+  cs <- cs / length(cs) # normalize
+
+  distance.center <- function(c)signif( Mod(c),        4)
+  angle           <- function(c)signif( 180*Arg(c)/pi, 3)
+  
+  df <- data.frame(cycle    = 0:(length(cs)-1),
+                   freq     = 0:(length(cs)-1) * sample.rate / length(cs),
+                   strength = sapply(cs, distance.center),
+                   delay    = sapply(cs, angle))
+  df
+}
+
+fft_out  <- convert.fft(fft(df_min_temp$value))
+head(fft_out)
+```
+
+```{r}
+library(reticulate)
+x <- r_to_py(df_min_temp$time)
+ y <- r_to_py(df_min_temp$value)
+ minTemp <- r_to_py(df_min_temp[,c(1,3)])
+```
+
+
+
+
+```{python, cache=TRUE, eval=FALSE}
+import numpy as np
+import matplotlib.pyplot as plt
+ 
+x = list(range(len(r.x)))
+y = r.y
+
+# apply fast fourier transform and take absolute values
+f=abs(np.fft.fft(r.y))
+
+# get the list of frequencies
+num=np.size(x)
+freq = [i / num for i in list(range(num))]
+
+# get the list of spectrums
+spectrum=f.real*f.real+f.imag*f.imag
+nspectrum=spectrum/spectrum[0]
+
+
+plt.clf()
+# plot nspectrum per frequency, with a semilog scale on nspectrum
+plt.semilogy(freq,nspectrum)
+
+
+plt.show()
+```
+
+```{python, cache=TRUE, eval=FALSE}
+# improve the plot by adding periods in number of weeks rather than  frequency
+import pandas as pd
+results = pd.DataFrame({'freq': freq, 'nspectrum': nspectrum})
+results['period'] = results['freq'] / (1/52)
+
+plt.clf()
+plt.semilogy(results['period'], results['nspectrum'])
+plt.show()
+```
+
+```{python, cache=TRUE, eval=FALSE}
+
+# improve the plot by converting the data into grouped per week to avoid peaks
+results['period_round'] = results['period'].round()
+grouped_week = results.groupby('period_round')['nspectrum'].sum()
+
+plt.clf()
+plt.semilogy(grouped_week.index, grouped_week)
+plt.xticks([1, 13, 26, 39, 52])
+plt.show()
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+temp <- ts(df_min_temp[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
+decomp_temp <- decompose(temp)
+plot(decomp_temp, col=our_purple)
+```
+
+
+```{r, cache=TRUE, warning=FALSE, eval=FALSE, include=FALSE}
+birthsSeasonAdj <- temp - decomp_temp$seasonal 
+plot.ts(birthsSeasonAdj, col=our_purple)
+plot.ts(decomp_temp$trend, col=our_purple)
+dd <- decomp_temp$trend
+p <- ggplot(dd, aes(x=day, y=value)) +
+  geom_line() + 
+  xlab("")
+p
+
+
+temp %>%
+  decompose() %>%
+  autoplot()
+```
+
+
+```{r, eval=FALSE}
+ggplot(akl_daily, aes(x = max_temp, y = month, height = ..density..)) +
+  geom_density_ridges(stat = "density")
+```
+
+
+```{r, cache=TRUE, warning=FALSE, eval=FALSE}
+library(ggfortify)
+autoplot(stl(temp, s.window = 'periodic'), ts.colour = our_purple)
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+autoplot(acf(temp, plot = FALSE))
+```
+
+```{r, cache=TRUE, warning=FALSE}
+autoplot(acf(temp, plot = FALSE), conf.int.fill = '#0000FF', conf.int.value = 0.8, conf.int.type = 'ma')
+```
+
+```{r, cache=TRUE, warning=FALSE}
+autoplot(spec.ar(temp, plot = FALSE))
+```
+
+```{r, eval=FALSE}
+library(forecast)
+ggtsdiag(auto.arima(temp))
+```
+
+
+```{r, cache=TRUE, warning=FALSE, eval=FALSE}
+ggout <- ggfreqplot(temp, freq=100) +
+  theme_tufte() 
+ggsave(ggout, filename = "freqplot.png", width = 11, height = 8.5, unit="in", dpi=600)
+```
+
+```{r, cache=TRUE, warning=FALSE}
+library(forecast)
+temp %>% stl(s.window='periodic') %>% seasadj() -> eeadj
+autoplot(eeadj)
+```
+```{r, cache=TRUE, warning=FALSE}
+eeadj %>% diff() %>% ggtsdisplay(main="")
+```
+
+```{r, cache=TRUE, warning=FALSE}
+(fit <- Arima(eeadj, order=c(5,1,2)))
+#(fit <- Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),
+#  lambda=0))
+
+checkresiduals(fit)
+```
+
+```{r, cache=TRUE, warning=FALSE}
+auto.arima(eeadj)
+
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+fit %>% forecast(h=12) %>% autoplot()
+
+autoplot(fit)
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+length(eeadj)
+ interval <- unclass(fit$tsp$interval)
+    interval <- Filter(function(x) x!=0, interval)
+
+eeadj %>%
+  Arima( order=c(5,1,2)) %>%
+  forecast() %>%
+  autoplot() +
+    ylab("min temp") + xlab("Year")
+
+
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+ggplot(data= df_min_temp, aes(x = dates, y = value)) + 
+  geom_smooth(color=our_purple) +
+  theme_tufte()
+```
+#### Maximum temperature
+
+### Relative Humidity
 ```{r, cache=TRUE}
 df_RH <- haskell %>%
   st_drop_geometry() %>%
   select(time,which(startsWith(colnames(haskell), "rhs")) ) %>%
   gather(key = "variable", value = "value", -time)
-
-df_RH_min <- haskell %>%
-  st_drop_geometry() %>%
-  select(time,which(startsWith(colnames(haskell), "rhsmin"))) %>%
-  gather(key = "variable", value = "value", -time)
-
-df_RH_max <- haskell %>%
-  st_drop_geometry() %>%
-  select(time,which(startsWith(colnames(haskell), "rhsmax"))) %>%
-  gather(key = "variable", value = "value", -time)
-head(df_RH_max)
 ```
-
 
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
 all_climate_projections_RH <- ggplot(data= df_RH, aes(x = time, y = value, color = variable)) + 
@@ -637,6 +878,39 @@ all_climate_projections_RH
 
 
 
+
+
+#### Minimum RH
+```{r}
+df_RH_min <- haskell %>%
+  st_drop_geometry() %>%
+  select(time,which(startsWith(colnames(haskell), "rhsmin"))) %>%
+  gather(key = "variable", value = "value", -time)
+head(df_RH_min)
+```
+
+
+#### Maximum RH
+```{r}
+df_RH_max <- haskell %>%
+  st_drop_geometry() %>%
+  select(time,which(startsWith(colnames(haskell), "rhsmax"))) %>%
+  gather(key = "variable", value = "value", -time)
+head(df_RH_max)
+```
+
+### Precipitation
+
+#### Zero-inflated data
+```{r, cache=TRUE}
+df_precip <- haskell_posix %>%
+  st_drop_geometry() %>%
+  select(dates, which(startsWith(colnames(haskell), "pr"))) %>%
+  gather(key = "variable", value = "value", -dates)
+head(df_precip)
+```
+
+
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
 all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )+ 
   geom_smooth(data= df_RH_min, color=our_purple) +
@@ -649,52 +923,98 @@ all_climate_projections_RH
 ```
 
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
+```{r, cache=TRUE, warning=FALSE}
+precip_ts <- ts(df_precip[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
+decomp_precip <- decompose(precip_ts)
+plot(decomp_precip, col=our_purple)
+```
 
-
-all_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value, color = variable)) + 
-  geom_line()+
-  geom_smooth() +
-  scale_colour_viridis_d(option="A")
-  
+```{r, cache=TRUE, warning=FALSE}
+all_climate_projections <- ggplot(data= df_precip, aes(x = dates, y = value, color = variable)) + 
+  geom_line(color=our_purple)+
+  theme_tufte()
 
 all_climate_projections
 ```
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
 
-
-ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = time, y = value)) + 
-  geom_line(color=our_purple)+
-  geom_smooth(color=our_yellow) +
-  theme_tufte()
-  
-
-ensemble_climate_projections
-
-
-ggplot(data= df_min_temp, aes(x = time, y = value)) + 
-  geom_smooth(color=our_purple) +
-  theme_tufte()
+```{r}
+plot.ts(decomp_precip$trend, col=our_purple)
 ```
 
 
 ```{r, cache=TRUE, warning=FALSE}
-
-
-all_climate_projections <- ggplot(data= df_precip, aes(x = time, y = value, color = variable)) + 
-  geom_line(color=our_purple)+
-  theme_tufte()
-  
-
-all_climate_projections
+autoplot(spec.ar(precip_ts, plot = FALSE))
 ```
+
+```{r}
+
+autoplot(stl(precip_ts, s.window = 'periodic'), ts.colour = our_purple)
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+autoplot(acf(precip_ts, plot = FALSE))
+```
+
+```{r, cache=TRUE, warning=FALSE}
+autoplot(acf(precip_ts, plot = FALSE), conf.int.fill = '#0000FF', conf.int.value = 0.8, conf.int.type = 'ma')
+```
+
+
+
+```{r, cache=TRUE, warning=FALSE}
+precip_ts %>% stl(s.window='periodic') %>% seasadj() -> eeadj
+autoplot(eeadj)
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+eeadj %>% diff() %>% ggtsdisplay(main="")
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+auto.arima(eeadj)
+
+```
+
+```{r, cache=TRUE, warning=FALSE}
+(fit <- Arima(eeadj, order=c(3,0,1)))
+#(fit <- Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),
+#  lambda=0))
+
+checkresiduals(fit)
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+fit %>% forecast(h=12) %>% autoplot()
+
+autoplot(fit)
+```
+
+
+```{r, cache=TRUE, warning=FALSE}
+length(eeadj)
+ interval <- unclass(fit$tsp$interval)
+    interval <- Filter(function(x) x!=0, interval)
+
+eeadj %>%
+  Arima( order=c(3,0,1)) %>%
+  forecast() %>%
+  autoplot() +
+    ylab("min temp") + xlab("Year")
+
+
+```
+
 
 ```{r, cache=TRUE, warning=FALSE,  message=FALSE}
 
 df_precip_2 <- df_precip[which(df_precip$value != 0),]
 
-ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = time, y = value)) + 
+ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = dates, y = value)) + 
    geom_line(color=our_purple)+
   geom_smooth(color=our_yellow)+
   theme_tufte()
@@ -702,7 +1022,7 @@ ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = time, y = valu
 
 ensemble_climate_projections
 
-ggplot(data= df_precip, aes(x = time, y = value)) + 
+ggplot(data= df_precip, aes(x = dates, y = value)) + 
      geom_smooth(color=our_purple)+
   theme_tufte()
 ```
@@ -747,7 +1067,7 @@ df_precip_quant_100000 <- df_precip %>%
 
 
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
-ggplot(data= df_precip, aes(x = time, y = value)) + 
+ggplot(data= df_precip, aes(x = dates, y = value)) + 
      geom_smooth(data= df_precip, color=our_purple)+ 
      geom_smooth(data= df_precip_quant_95, color=our_purple) +
     geom_smooth(data= df_precip_quant_96, color=our_purple) +
