@@ -1,17 +1,17 @@
 ---
 title: 'Sensing the Earth: CFT tutorial'
 output:
-  cleanrmd::html_document_clean:
-    theme: style-serif
-  html_document:
-    toc: yes
-    df_print: paged
   pdf_document:
     template: /Users/ty/Downloads/Eisvogel-2.0.0/eisvogel.latex
     toc: yes
     toc_depth: 2
     number_sections: true
     keep_tex: yes
+  html_document:
+    toc: yes
+    df_print: paged
+  cleanrmd::html_document_clean:
+    theme: style-serif
 ---
 \let\oldsection\section
 \renewcommand\section{\clearpage\oldsection}
@@ -69,7 +69,7 @@ py_install("geopandas")
 1. Download the Haskell university logo
 ```{r, cache=TRUE, warning=FALSE, message=FALSE, fig.cap="This is the Haskell logo that I downloaded to this working directory from the schools website. This is the only element that we haven't retrieved directly through and API."}
 seamless_image_filenames <- c(
-  'Haskell_logo copy.png'
+  'Haskell_logo.png'
 )
 
 ```
@@ -189,6 +189,7 @@ buildings = ox.geometries_from_place(place_name, tags)
 buildings.plot()
 plt.show()
 ```
+
 
 ## Build a basemap from OpenStreetMap
 

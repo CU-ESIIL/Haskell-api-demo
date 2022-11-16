@@ -395,7 +395,62 @@ University}}{Climate futures for Haskell Indian Nations University}}\label{clima
 \FunctionTok{library}\NormalTok{(future)}
 \FunctionTok{library}\NormalTok{(tidytable)}
 \FunctionTok{library}\NormalTok{(janitor)}
-\FunctionTok{options}\NormalTok{(}\AttributeTok{timeout =}\NormalTok{ 600L)}
+\FunctionTok{options}\NormalTok{(}\AttributeTok{timeout =} \DecValTok{600}\NormalTok{)}
+\FunctionTok{library}\NormalTok{(ggfortify)}
+\FunctionTok{library}\NormalTok{(forecast)}
+\FunctionTok{library}\NormalTok{(reticulate)}
+\FunctionTok{library}\NormalTok{(osmdata)}
+\FunctionTok{library}\NormalTok{(osmextract)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{conda\_update}\NormalTok{(}\AttributeTok{conda =} \StringTok{"auto"}\NormalTok{)}
+\FunctionTok{py\_install}\NormalTok{(}\StringTok{"numpy"}\NormalTok{)}
+\FunctionTok{py\_install}\NormalTok{(}\StringTok{"matplotlib"}\NormalTok{)}
+\FunctionTok{py\_install}\NormalTok{(}\StringTok{"pandas"}\NormalTok{)}
+\FunctionTok{py\_install}\NormalTok{(}\StringTok{"statsmodels"}\NormalTok{)}
+\FunctionTok{py\_install}\NormalTok{(}\StringTok{"osmnx"}\NormalTok{)}
+\FunctionTok{py\_install}\NormalTok{(}\StringTok{"geopandas"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{set-your-color-palette}{%
+\subsubsection{Set your color palette}\label{set-your-color-palette}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Download the Haskell university logo
+\end{enumerate}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{seamless\_image\_filenames }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
+  \StringTok{\textquotesingle{}Haskell\_logo copy.png\textquotesingle{}}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics[width=0.5\textwidth,height=\textheight]{Haskell_logo.png}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Sample the colors on that logo to make a custom color palette for our
+  basemap
+\end{enumerate}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{our\_blue }\OtherTok{\textless{}{-}} \StringTok{"\#3A4E8B"}
+\NormalTok{our\_yellow }\OtherTok{\textless{}{-}} \StringTok{"\#FFD60F"}
+\NormalTok{our\_beige }\OtherTok{\textless{}{-}} \StringTok{"\#EDEDF0"}
+\NormalTok{our\_purple }\OtherTok{\textless{}{-}} \StringTok{"\#3E1471"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -435,19 +490,17 @@ box}\label{use-plain-lnaguage-to-request-a-bounding-box}}
 ## y  38.90447  39.03350
 \end{verbatim}
 
+If you format your request a little differently, then it will return the
+more complex polygon for the bounding box.
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{bbb }\OtherTok{\textless{}{-}}\NormalTok{ bb}
-\NormalTok{bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{] }\SpecialCharTok{{-}} \FloatTok{0.001}
-\NormalTok{bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{] }\SpecialCharTok{+} \FloatTok{0.001}
-\NormalTok{bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{] }\SpecialCharTok{{-}} \FloatTok{0.03}
-\NormalTok{bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{] }\SpecialCharTok{+} \FloatTok{0.001}
-\NormalTok{xlimit }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{1}\NormalTok{,]}
-\NormalTok{ylimit }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{2}\NormalTok{,] }
-\NormalTok{xmid }\OtherTok{\textless{}{-}}\NormalTok{ xlimit[}\DecValTok{1}\NormalTok{] }\SpecialCharTok{+} \FunctionTok{diff}\NormalTok{(xlimit) }\SpecialCharTok{/} \DecValTok{2} 
-\NormalTok{ratio }\OtherTok{\textless{}{-}} \FunctionTok{diff}\NormalTok{(xlimit) }\SpecialCharTok{/} \FunctionTok{diff}\NormalTok{(ylimit)}
+\NormalTok{bb\_sf }\OtherTok{\textless{}{-}} \FunctionTok{getbb}\NormalTok{(}\StringTok{"Lawrence, Kansas"}\NormalTok{, }\AttributeTok{format\_out =} \StringTok{"sf\_polygon"}\NormalTok{)}
+\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{bb\_sf}\SpecialCharTok{$}\NormalTok{multipolygon) }\SpecialCharTok{+} \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{fill=}\NormalTok{our\_beige, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+} \FunctionTok{theme\_tufte}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-8-1.pdf}
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -455,35 +508,81 @@ box}\label{use-plain-lnaguage-to-request-a-bounding-box}}
 \tightlist
 \item
   Find any buildings associated with any University in our ``Lawrence,
-  Kansas'' bounding box. This request first calls the opq() function,
-  which mounts to the OpenStreetMap database and then queries the
-  ``building'' key (i.e.~all the building footprints) for any building
-  types matching the value ``university''. This is a representation of
-  the ``key'' and ``value'' system that OSM uses to query data. The
-  final step is to convert the OSM output into a spatial format that
-  works well in R, called sf.
+  Kansas'' bounding box.
 \end{enumerate}
+
+\hypertarget{using-the-package-osmdata}{%
+\paragraph{Using the package osmdata}\label{using-the-package-osmdata}}
+
+This request first calls the opq() function, which mounts to the
+OpenStreetMap database and then queries the ``building'' key (i.e.~all
+the building footprints) for any building types matching the value
+``university''. This is a representation of the ``key'' and ``value''
+system that OSM uses to query data. The final step is to convert the OSM
+output into a spatial format that works well in R, called sf.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{my\_boundary }\OtherTok{\textless{}{-}} \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
+\FunctionTok{library}\NormalTok{(osmdata)}
+\NormalTok{University\_buildings }\OtherTok{\textless{}{-}} 
+  \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
   \FunctionTok{add\_osm\_feature}\NormalTok{(}\AttributeTok{key =} \StringTok{"building"}\NormalTok{, }\AttributeTok{value =} \StringTok{"university"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
-\FunctionTok{osmdata\_sf}\NormalTok{() }
+  \FunctionTok{osmdata\_sf}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
 
-\FunctionTok{summary}\NormalTok{(my\_boundary)}
+The output from this request shows a list of multipolygons, polygons,
+linestrings, and points. Each of these data types have a different
+storage structure, so we can't look at them all at the same time.
+Instead, lets start with polygons, which likely represent a single
+building footprint. Printing `my\_boundary\$osm\_polygons' shows that
+there are two Universities in Lawrence and we need to filter those
+results down to only include Haskell building.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{University\_buildings }\OtherTok{\textless{}{-}}\NormalTok{ University\_buildings}\SpecialCharTok{$}\NormalTok{osm\_polygons}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{using-the-package-osmextract}{%
+\paragraph{Using the package
+osmextract}\label{using-the-package-osmextract}}
+
+The package OSMextract is calling the same OSM API, but it does it in a
+slightly different way that can make if faster but also requires a
+little better understanding of what you're looking for. For example, by
+default OSM extract only downloads the first 25 columns as their own
+column and clumps the rest into a list that is difficult to read. You
+can add columns to the api call as I did here (e.g.~extra\_tags =
+c(``operator)) and it will return that column as a column instead of in
+the list. You can also parse the list yourself or use osmdata() to
+download a sample and then use osmextract to execute larger downloads.
+This package usually clumps polygons and multipolygons by default so,
+you just ask for multipolygons and get both back.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(osmextract)}
+\NormalTok{University\_buildings }\OtherTok{\textless{}{-}} \FunctionTok{oe\_get}\NormalTok{(}
+  \AttributeTok{place =} \StringTok{"Lawrence, Kansas"}\NormalTok{, }
+  \AttributeTok{layer =} \StringTok{"multipolygons"}\NormalTok{,}
+  \AttributeTok{query =} \StringTok{"SELECT * FROM multipolygons WHERE building IN (\textquotesingle{}university\textquotesingle{})"}\NormalTok{,}
+  \AttributeTok{quiet =} \ConstantTok{TRUE}\NormalTok{,}
+  \AttributeTok{extra\_tags =} \FunctionTok{c}\NormalTok{(}\StringTok{"operator"}\NormalTok{)}
+\NormalTok{)}
+
+\FunctionTok{colnames}\NormalTok{(University\_buildings)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-##                   Length Class  Mode     
-## bbox               1     -none- character
-## overpass_call      1     -none- character
-## meta               3     -none- list     
-## osm_points         5     sf     list     
-## osm_lines         40     sf     list     
-## osm_polygons      40     sf     list     
-## osm_multilines     0     -none- NULL     
-## osm_multipolygons 17     sf     list
+##  [1] "osm_id"      "osm_way_id"  "name"        "type"        "aeroway"    
+##  [6] "amenity"     "admin_level" "barrier"     "boundary"    "building"   
+## [11] "craft"       "geological"  "historic"    "land_area"   "landuse"    
+## [16] "leisure"     "man_made"    "military"    "natural"     "office"     
+## [21] "place"       "shop"        "sport"       "tourism"     "operator"   
+## [26] "other_tags"  "geometry"
 \end{verbatim}
 
 \begin{enumerate}
@@ -491,30 +590,43 @@ box}\label{use-plain-lnaguage-to-request-a-bounding-box}}
 \setcounter{enumi}{2}
 \tightlist
 \item
-  The output from this request shows a list of multipolygons, polygons,
-  linestrings, and points. Each of these data types have a different
-  storage structure, so we can't look at them all at the same time.
-  Instead, lets start with polygons, which likely represent a single
-  building footprint. Printing `my\_boundary\$osm\_polygons' shows that
-  there are two Universities in Lawrence and we need to filter those
-  results down to only include Haskell building.
+  Use the `operator' column to identify the owner of those buildings and
+  filter down to building operated by Haskell Indian Nations University.
 \end{enumerate}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{boundaries }\OtherTok{\textless{}{-}}\NormalTok{ my\_boundary}\SpecialCharTok{$}\NormalTok{osm\_polygons }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{Haskell\_university\_buildings }\OtherTok{\textless{}{-}}\NormalTok{ University\_buildings }\SpecialCharTok{\%\textgreater{}\%} 
   \FunctionTok{filter}\NormalTok{(operator }\SpecialCharTok{==} \StringTok{"Haskell Indian Nations University"}\NormalTok{) }
-\NormalTok{boundaries1 }\OtherTok{\textless{}{-}}\NormalTok{ boundaries[}\DecValTok{1}\NormalTok{,] }\CommentTok{\#take the first building (e.g. first row) of the returns}
+\NormalTok{Haskell\_university\_buildings1 }\OtherTok{\textless{}{-}}\NormalTok{ Haskell\_university\_buildings[}\DecValTok{1}\NormalTok{,] }\CommentTok{\#take the first building (e.g. first row) of the returns}
+\FunctionTok{head}\NormalTok{(Haskell\_university\_buildings1)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-##      osm_id        name   building ele gnis.county_id gnis.created
-## 1 172577406 Winona Hall university 264            045   12/08/2008
-##   gnis.feature_id gnis.state_id                          operator
-## 1         2510678            20 Haskell Indian Nations University
+## # A tidytable: 1 x 27
+##   osm_id osm_way_id name   type  aeroway amenity admin~1 barrier bound~2 build~3
+##   <chr>  <chr>      <chr>  <chr> <chr>   <chr>   <chr>   <chr>   <chr>   <chr>  
+## 1 <NA>   172577406  Winon~ <NA>  <NA>    <NA>    <NA>    <NA>    <NA>    univer~
+## # ... with 17 more variables: craft <chr>, geological <chr>, historic <chr>,
+## #   land_area <chr>, landuse <chr>, leisure <chr>, man_made <chr>,
+## #   military <chr>, natural <chr>, office <chr>, place <chr>, shop <chr>,
+## #   sport <chr>, tourism <chr>, operator <chr>, other_tags <chr>,
+## #   geometry <MULTIPOLYGON [°]>, and abbreviated variable names 1: admin_level,
+## #   2: boundary, 3: building
+\end{verbatim}
+
+The janitor package is useful for performing automated cleaning tasks on
+your data. Here we remove all of the columns that contain no data to
+make our dataframe much smaller and easier to read.
+
+\begin{verbatim}
+##   osm_way_id        name   building                          operator
+## 1  172577406 Winona Hall university Haskell Indian Nations University
+##                                                                                                other_tags
+## 1 "gnis:county_id"=>"045","gnis:created"=>"12/08/2008","gnis:feature_id"=>"2510678","gnis:state_id"=>"20"
 ##                         geometry
-## 1 POLYGON ((-95.23447 38.9396...
+## 1 MULTIPOLYGON (((-95.23447 3...
 \end{verbatim}
 
 \begin{enumerate}
@@ -531,62 +643,59 @@ box}\label{use-plain-lnaguage-to-request-a-bounding-box}}
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{basemap }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data =} \FunctionTok{st\_as\_sf}\NormalTok{(boundaries1)) }\SpecialCharTok{+}
-  \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{fill =} \StringTok{"blueviolet"}\NormalTok{) }\SpecialCharTok{+}
-  \FunctionTok{geom\_sf\_text}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{label =}\NormalTok{ name), }\AttributeTok{size=}\DecValTok{10}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{fill =}\NormalTok{ our\_purple, }\AttributeTok{color=}\NormalTok{our\_yellow) }\SpecialCharTok{+}
+  \FunctionTok{geom\_sf\_text}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{label =}\NormalTok{ name), }\AttributeTok{size=}\DecValTok{10}\NormalTok{, }\AttributeTok{color=}\NormalTok{our\_yellow) }\SpecialCharTok{+}
   \FunctionTok{theme\_tufte}\NormalTok{()}
 
 \NormalTok{basemap}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{figure}
-\centering
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-9-1.pdf}
-\caption{This seems to match.}
-\end{figure}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-14-1.pdf}
+\#\#\#\# OSM in python using osmnx The python interface for OSM uses a
+slightly different syntax to write the requests, but it's calling the
+same OSM api that the R packages call. You still submit a plain-language
+area-of-interest, a value, and a key. Those three inputs will return a
+list of points, lines, and polygons for you to use and manipulate.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{place\_name }\OperatorTok{=} \StringTok{"Lawrence, Kansas"}
+
+\CommentTok{\# import osmnx}
+\ImportTok{import}\NormalTok{ osmnx }\ImportTok{as}\NormalTok{ ox}
+\ImportTok{import}\NormalTok{ geopandas }\ImportTok{as}\NormalTok{ gpd}
+\ImportTok{import}\NormalTok{ matplotlib.pyplot }\ImportTok{as}\NormalTok{ plt}
+
+\CommentTok{\# Get place boundary related to the place name as a geodataframe}
+\NormalTok{area }\OperatorTok{=}\NormalTok{ ox.geocode\_to\_gdf(place\_name)}
+\BuiltInTok{type}\NormalTok{(area)}
+
+
+\CommentTok{\# List key{-}value pairs for tags}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## <class 'geopandas.geodataframe.GeoDataFrame'>
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tags }\OperatorTok{=}\NormalTok{ \{}\StringTok{\textquotesingle{}building\textquotesingle{}}\NormalTok{: }\StringTok{\textquotesingle{}university\textquotesingle{}}\NormalTok{\}   }
+
+
+\NormalTok{buildings }\OperatorTok{=}\NormalTok{ ox.geometries\_from\_place(place\_name, tags)}
+\NormalTok{buildings.plot()}
+\NormalTok{plt.show()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-15-1.pdf}
 
 \hypertarget{build-a-basemap-from-openstreetmap}{%
 \subsection{Build a basemap from
 OpenStreetMap}\label{build-a-basemap-from-openstreetmap}}
-
-\hypertarget{set-your-color-palette}{%
-\subsubsection{Set your color palette}\label{set-your-color-palette}}
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  Download the Haskell university logo
-\end{enumerate}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{seamless\_image\_filenames }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
-  \StringTok{\textquotesingle{}Haskell\_logo copy.jpg\textquotesingle{}}
-\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics[width=0.5\textwidth,height=\textheight]{/Users/ty/Documents/Haskell api demo/Haskell_logo.png}
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\setcounter{enumi}{1}
-\tightlist
-\item
-  Sample the colors on that logo to make a custom color palette for our
-  basemap
-\end{enumerate}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{our\_blue }\OtherTok{\textless{}{-}} \StringTok{"\#3A4E8B"}
-\NormalTok{our\_yellow }\OtherTok{\textless{}{-}} \StringTok{"\#FFD60F"}
-\NormalTok{our\_beige }\OtherTok{\textless{}{-}} \StringTok{"\#EDEDF0"}
-\NormalTok{our\_purple }\OtherTok{\textless{}{-}} \StringTok{"\#3E1471"}
-\NormalTok{our\_purple\_alpha }\OtherTok{\textless{}{-}} \StringTok{"\#3E1471999"}
-\end{Highlighting}
-\end{Shaded}
 
 \hypertarget{download-all-the-layers-you-want-to-include-in-your-basemap}{%
 \subsubsection{Download all the layers you want to include in your
@@ -601,15 +710,22 @@ basemap}\label{download-all-the-layers-you-want-to-include-in-your-basemap}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{my\_boundary }\OtherTok{\textless{}{-}} \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{add\_osm\_feature}\NormalTok{(}\AttributeTok{key =} \StringTok{"amenity"}\NormalTok{, }\AttributeTok{value =} \StringTok{"university"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
-\FunctionTok{osmdata\_sf}\NormalTok{() }
+\NormalTok{amenity\_poly }\OtherTok{\textless{}{-}} \FunctionTok{oe\_get}\NormalTok{(}
+  \AttributeTok{place =} \StringTok{"Lawrence, Kansas"}\NormalTok{, }
+  \AttributeTok{layer =} \StringTok{"multipolygons"}\NormalTok{,}
+  \AttributeTok{query =} \StringTok{"SELECT * FROM multipolygons WHERE amenity IN (\textquotesingle{}university\textquotesingle{})"}\NormalTok{,}
+  \AttributeTok{quiet =} \ConstantTok{TRUE}\NormalTok{,}
+  \AttributeTok{extra\_tags =} \FunctionTok{c}\NormalTok{(}\StringTok{"operator"}\NormalTok{)}
+\NormalTok{)}
 
-\NormalTok{haskell\_poly }\OtherTok{\textless{}{-}}\NormalTok{ my\_boundary}\SpecialCharTok{$}\NormalTok{osm\_multipolygons[}\DecValTok{1}\NormalTok{,]}
+
+\NormalTok{haskell\_poly }\OtherTok{\textless{}{-}}\NormalTok{ amenity\_poly }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(name }\SpecialCharTok{==}\StringTok{\textquotesingle{}Haskell Indian Nations University\textquotesingle{}}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{st\_as\_sf}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-13-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-17-1.pdf}
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -625,39 +741,38 @@ basemap}\label{download-all-the-layers-you-want-to-include-in-your-basemap}}
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{\# the big streets}
-\NormalTok{streets }\OtherTok{\textless{}{-}} 
-  \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{add\_osm\_feature}\NormalTok{(}\AttributeTok{key =} \StringTok{"highway"}\NormalTok{, }
-                  \AttributeTok{value =} \FunctionTok{c}\NormalTok{(}\StringTok{"motorway"}\NormalTok{, }\StringTok{"trunk"}\NormalTok{,  }\StringTok{"primary"}\NormalTok{, }
-                            \StringTok{"secondary"}\NormalTok{, }\StringTok{"tertiary"}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{osmdata\_sf}\NormalTok{() }
+\NormalTok{big\_streets\_lines }\OtherTok{\textless{}{-}} \FunctionTok{oe\_get}\NormalTok{(}
+  \AttributeTok{place =} \StringTok{"Lawrence, Kansas"}\NormalTok{, }
+  \AttributeTok{layer =} \StringTok{"lines"}\NormalTok{,}
+  \AttributeTok{query =} \StringTok{"SELECT * FROM lines WHERE highway IN (\textquotesingle{}motorway\textquotesingle{}, \textquotesingle{}trunk\textquotesingle{},  \textquotesingle{}primary\textquotesingle{},  \textquotesingle{}secondary\textquotesingle{}, \textquotesingle{}tertiary\textquotesingle{})"}\NormalTok{,}
+  \AttributeTok{quiet =} \ConstantTok{TRUE}
+\NormalTok{)}
 
-\NormalTok{streets\_crop }\OtherTok{\textless{}{-}}\NormalTok{ streets}\SpecialCharTok{$}\NormalTok{osm\_lines }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{streets\_crop }\OtherTok{\textless{}{-}}\NormalTok{ big\_streets\_lines }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-15-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-19-1.pdf}
 
 The second street download is for the small side streets and footpaths.
 These lines will be more faint and in the background.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{small\_streets }\OtherTok{\textless{}{-}}  
-  \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{add\_osm\_feature}\NormalTok{(}
-    \AttributeTok{key =} \StringTok{"highway"}\NormalTok{, }
-    \AttributeTok{value =} \FunctionTok{c}\NormalTok{(}\StringTok{"residential"}\NormalTok{, }\StringTok{"living"}\NormalTok{, }\StringTok{"unclassified"}\NormalTok{, }
-              \StringTok{"service"}\NormalTok{, }\StringTok{"footway"}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{osmdata\_sf}\NormalTok{()}
+\NormalTok{small\_streets }\OtherTok{\textless{}{-}} \FunctionTok{oe\_get}\NormalTok{(}
+  \AttributeTok{place =} \StringTok{"Lawrence, Kansas"}\NormalTok{, }
+  \AttributeTok{layer =} \StringTok{"lines"}\NormalTok{,}
+  \AttributeTok{query =} \StringTok{"SELECT * FROM lines WHERE highway IN (\textquotesingle{}residential\textquotesingle{}, \textquotesingle{}living\textquotesingle{},  \textquotesingle{}unclassified\textquotesingle{},  \textquotesingle{}service\textquotesingle{}, \textquotesingle{}footway\textquotesingle{})"}\NormalTok{,}
+  \AttributeTok{quiet =} \ConstantTok{TRUE}
+\NormalTok{)}
 
-\NormalTok{small\_streets\_crop }\OtherTok{\textless{}{-}}\NormalTok{ small\_streets}\SpecialCharTok{$}\NormalTok{osm\_lines }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{small\_streets\_crop }\OtherTok{\textless{}{-}}\NormalTok{ small\_streets }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-17-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-21-1.pdf}
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -671,10 +786,12 @@ These lines will be more faint and in the background.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{water }\OtherTok{\textless{}{-}} 
-  \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{add\_osm\_feature}\NormalTok{(}\AttributeTok{key =} \StringTok{"waterway"}\NormalTok{, }\AttributeTok{value =} \StringTok{"river"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{osmdata\_sf}\NormalTok{()}
+\NormalTok{water }\OtherTok{\textless{}{-}} \FunctionTok{oe\_get}\NormalTok{(}
+  \AttributeTok{place =} \StringTok{"Lawrence, Kansas"}\NormalTok{, }
+  \AttributeTok{layer =} \StringTok{"lines"}\NormalTok{,}
+  \AttributeTok{query =} \StringTok{"SELECT * FROM lines WHERE waterway IN (\textquotesingle{}river\textquotesingle{})"}\NormalTok{,}
+  \AttributeTok{quiet =} \ConstantTok{TRUE}
+\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -685,14 +802,14 @@ river is the large feature in this map so, we pull it out first.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{Kansas\_river\_multi }\OtherTok{\textless{}{-}}\NormalTok{ water}\SpecialCharTok{$}\NormalTok{osm\_multilines }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{Kansas\_river\_multi }\OtherTok{\textless{}{-}}\NormalTok{ water }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{filter}\NormalTok{(name }\SpecialCharTok{==} \StringTok{"Kansas River"}\NormalTok{)  }\SpecialCharTok{\%\textgreater{}\%} 
   \FunctionTok{st\_as\_sf}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-20-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-24-1.pdf}
 
 After removing the Kansas river, we are left with a number of remaining
 waterways that are stored as both linestrings and multilinestrings. We
@@ -700,55 +817,8 @@ need to download each of those data types individually.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{small\_water\_multi }\OtherTok{\textless{}{-}}\NormalTok{ water}\SpecialCharTok{$}\NormalTok{osm\_multilines }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{small\_water\_lines }\OtherTok{\textless{}{-}}\NormalTok{ water }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{filter}\NormalTok{(name }\SpecialCharTok{!=} \StringTok{"Kansas River"}\NormalTok{)}\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_as\_sf}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
-
-\NormalTok{small\_water\_lines }\OtherTok{\textless{}{-}}\NormalTok{ water}\SpecialCharTok{$}\NormalTok{osm\_lines }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{filter}\NormalTok{(name }\SpecialCharTok{!=} \StringTok{"Kansas River"}\NormalTok{)}\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_as\_sf}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-22-1.pdf}
-
-The stationary water bodies are divided into two categories: lakes and
-reservoirs. We need to pull each of these individually. First, the
-reservoir.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{reservoir }\OtherTok{\textless{}{-}} 
-  \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{add\_osm\_feature}\NormalTok{(}\AttributeTok{key =} \StringTok{"water"}\NormalTok{, }\AttributeTok{value =} \StringTok{"reservoir"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{osmdata\_sf}\NormalTok{()}
-
-\NormalTok{reservoir\_crop\_multi }\OtherTok{\textless{}{-}}\NormalTok{ reservoir}\SpecialCharTok{$}\NormalTok{osm\_multipolygons }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_as\_sf}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
-
-\NormalTok{reservoir\_crop\_poly }\OtherTok{\textless{}{-}}\NormalTok{ reservoir}\SpecialCharTok{$}\NormalTok{osm\_multipolygons }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_as\_sf}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
-
-\NormalTok{reservoir\_crop }\OtherTok{\textless{}{-}} \FunctionTok{cbind}\NormalTok{(reservoir\_crop\_multi, reservoir\_crop\_poly)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-24-1.pdf}
-
-Now the lakes.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{lake }\OtherTok{\textless{}{-}} 
-  \FunctionTok{opq}\NormalTok{(bb) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{add\_osm\_feature}\NormalTok{(}\AttributeTok{key =} \StringTok{"water"}\NormalTok{, }\AttributeTok{value =} \StringTok{"lake"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} 
-  \FunctionTok{osmdata\_sf}\NormalTok{()}
-
-\NormalTok{lake\_crop }\OtherTok{\textless{}{-}}\NormalTok{ lake}\SpecialCharTok{$}\NormalTok{osm\_polygons }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_as\_sf}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_crop}\NormalTok{(}\AttributeTok{y =} \FunctionTok{c}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{ymax =}\NormalTok{ bb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{], }\AttributeTok{xmin =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{], }\AttributeTok{xmax =}\NormalTok{ bb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{]))}
 \end{Highlighting}
@@ -756,9 +826,56 @@ Now the lakes.
 
 \includegraphics{Haskell_files/figure-latex/unnamed-chunk-26-1.pdf}
 
+The stationary water bodies are a subcategory under the key=natural and
+the value=water. We ask for the extra column named water to be include
+in our returned sf table. We can use that column to filter our the lakes
+and reservours as local water bodies.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Request all water features using natural:water but also request the water tag be given it\textquotesingle{}s own column. }
+\NormalTok{water\_body }\OtherTok{\textless{}{-}} \FunctionTok{oe\_get}\NormalTok{(}
+  \AttributeTok{place =} \StringTok{"Lawrence, Kansas"}\NormalTok{, }
+  \AttributeTok{layer =} \StringTok{"multipolygons"}\NormalTok{,}
+  \AttributeTok{query =} \StringTok{"SELECT * FROM multipolygons WHERE natural IN (\textquotesingle{}water\textquotesingle{})"}\NormalTok{,}
+  \AttributeTok{quiet =} \ConstantTok{TRUE}\NormalTok{,}
+  \AttributeTok{extra\_tags =} \FunctionTok{c}\NormalTok{(}\StringTok{"water"}\NormalTok{) }\CommentTok{\#give water it\textquotesingle{}s own column instead of clumping in supplimentary list}
+\NormalTok{)}
+
+\NormalTok{water\_body\_crop }\OtherTok{\textless{}{-}}\NormalTok{ water\_body }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(water }\SpecialCharTok{==} \StringTok{\textquotesingle{}lake\textquotesingle{}} \SpecialCharTok{|}\NormalTok{ water }\SpecialCharTok{==} \StringTok{"reservoir"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{st\_as\_sf}\NormalTok{() }
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-28-1.pdf}
+
 \hypertarget{stack-downloaded-osm-layers-into-a-final-basemap.}{%
 \subsubsection{Stack downloaded OSM layers into a final
 basemap.}\label{stack-downloaded-osm-layers-into-a-final-basemap.}}
+
+This is a special edit to manually shift the bounding box so that it
+better centered Haskell University in the basemap. Most people will not
+need this adjustment but may enjoy the ability to microadjust their
+basemap.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{bbb }\OtherTok{\textless{}{-}}\NormalTok{ bb}
+\NormalTok{bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{] }\SpecialCharTok{{-}} \FloatTok{0.001}
+\NormalTok{bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{] }\SpecialCharTok{+} \FloatTok{0.001}
+\NormalTok{bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{] }\SpecialCharTok{{-}} \FloatTok{0.03}
+\NormalTok{bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{2}\NormalTok{,}\DecValTok{2}\NormalTok{] }\SpecialCharTok{+} \FloatTok{0.001}
+\NormalTok{xlimit }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{1}\NormalTok{,]}
+\NormalTok{ylimit }\OtherTok{\textless{}{-}}\NormalTok{ bbb[}\DecValTok{2}\NormalTok{,] }
+\NormalTok{xmid }\OtherTok{\textless{}{-}}\NormalTok{ xlimit[}\DecValTok{1}\NormalTok{] }\SpecialCharTok{+} \FunctionTok{diff}\NormalTok{(xlimit) }\SpecialCharTok{/} \DecValTok{2} 
+\NormalTok{ratio }\OtherTok{\textless{}{-}} \FunctionTok{diff}\NormalTok{(xlimit) }\SpecialCharTok{/} \FunctionTok{diff}\NormalTok{(ylimit)}
+\end{Highlighting}
+\end{Shaded}
+
+This is a long plot that calls each of the plot layers in order from the
+back to the front. There is a section at the end that crop, format, and
+append the basemap.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -766,13 +883,10 @@ basemap.}\label{stack-downloaded-osm-layers-into-a-final-basemap.}}
   \CommentTok{\# plot moving water layers first}
   \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ Kansas\_river\_multi, }\AttributeTok{alpha =}\NormalTok{ .}\DecValTok{8}\NormalTok{,}
           \AttributeTok{size =} \DecValTok{3}\NormalTok{, }\AttributeTok{colour =}\NormalTok{ our\_blue) }\SpecialCharTok{+}
-  \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ small\_water\_multi, }\AttributeTok{alpha =}\NormalTok{ .}\DecValTok{8}\NormalTok{,}
-          \AttributeTok{size =} \FloatTok{0.5}\NormalTok{, }\AttributeTok{colour =}\NormalTok{ our\_blue) }\SpecialCharTok{+}
   \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ small\_water\_lines, }\AttributeTok{alpha =}\NormalTok{ .}\DecValTok{8}\NormalTok{,}
           \AttributeTok{size =} \FloatTok{0.5}\NormalTok{, }\AttributeTok{colour =}\NormalTok{ our\_blue) }\SpecialCharTok{+}
   \CommentTok{\# Layer bodies of water over the moving water layers}
-  \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ lake\_crop, }\AttributeTok{alpha =} \DecValTok{1}\NormalTok{, }\AttributeTok{fill =}\NormalTok{ our\_blue, }\AttributeTok{size=}\DecValTok{0}\NormalTok{) }\SpecialCharTok{+}
-  \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ reservoir\_crop, }\AttributeTok{alpha =} \DecValTok{1}\NormalTok{, }\AttributeTok{fill =}\NormalTok{ our\_blue, }\AttributeTok{size=}\DecValTok{0}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ water\_body\_crop, }\AttributeTok{alpha =} \DecValTok{1}\NormalTok{, }\AttributeTok{fill =}\NormalTok{ our\_blue, }\AttributeTok{size=}\DecValTok{0}\NormalTok{) }\SpecialCharTok{+}
   
   \CommentTok{\# Plot small streets in the background with a light fade}
   \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ small\_streets\_crop, }\AttributeTok{alpha =}\NormalTok{ .}\DecValTok{6}\NormalTok{, }
@@ -781,14 +895,14 @@ basemap.}\label{stack-downloaded-osm-layers-into-a-final-basemap.}}
   \FunctionTok{geom\_sf}\NormalTok{(}\AttributeTok{data =}\NormalTok{ streets\_crop, }\AttributeTok{alpha =}\NormalTok{ .}\DecValTok{8}\NormalTok{, }
           \AttributeTok{size =}\NormalTok{ .}\DecValTok{4}\NormalTok{, }\AttributeTok{colour =}\NormalTok{ our\_yellow ) }\SpecialCharTok{+}
   \CommentTok{\# Layer Haskell university property polygon in the foreground}
-  \FunctionTok{geom\_sf}\NormalTok{( }\AttributeTok{data=}\NormalTok{haskell\_poly, }\AttributeTok{color=}\NormalTok{our\_yellow, }\AttributeTok{size=}\FloatTok{0.5}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_sf}\NormalTok{( }\AttributeTok{data=}\NormalTok{haskell\_poly, }\AttributeTok{color=}\NormalTok{our\_yellow, }\AttributeTok{size=}\DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
   \CommentTok{\# Fill Haskell property polygon with Haskell logo}
    \FunctionTok{geom\_sf\_pattern}\NormalTok{( }
      \AttributeTok{data =}\NormalTok{ haskell\_poly,}
      \AttributeTok{size=}\DecValTok{0}\NormalTok{,}
     \AttributeTok{pattern       =} \StringTok{\textquotesingle{}image\textquotesingle{}}\NormalTok{,}
     \AttributeTok{pattern\_type  =} \StringTok{\textquotesingle{}tile\textquotesingle{}}\NormalTok{,}
-    \AttributeTok{pattern\_scale =} \FloatTok{1.1}\NormalTok{,}
+    \AttributeTok{pattern\_scale =} \FloatTok{0.06}\NormalTok{,}
     \AttributeTok{pattern\_filename =}\NormalTok{ seamless\_image\_filenames}
 \NormalTok{  ) }\SpecialCharTok{+}
   \CommentTok{\# set limits on final figure }
@@ -829,15 +943,8 @@ This dataset is way too big to download to a particular machine.
 Instead, you mount to the analysis ready data cube (i.e.~netCDF) and
 only download the subsetted data that you want to pull.
 
-\includegraphics{climate_grid.png}
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  We calculate the center point for measuring to the nearest climate
-  data point.
-\end{enumerate}
+\includegraphics{climate_grid.png} 1. We calculate the center point for
+measuring to the nearest climate data point.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -888,13 +995,13 @@ only download the subsetted data that you want to pull.
 
 \includegraphics{grid_match.png}
 
-\hypertarget{downloading-climate-data-for-our-bounding-box.}{%
-\subsection{Downloading climate data for our bounding
-box.}\label{downloading-climate-data-for-our-bounding-box.}}
+\hypertarget{find-and-transfer-climate-data-from-an-api}{%
+\subsection{Find and transfer climate data from an
+API}\label{find-and-transfer-climate-data-from-an-api}}
 
-\hypertarget{connect-to-the-downscaled-dataset.}{%
-\subsubsection{Connect to the downscaled
-dataset.}\label{connect-to-the-downscaled-dataset.}}
+\hypertarget{mount-to-the-downscaled-dataset-and-transfer-metadata.}{%
+\subsubsection{Mount to the downscaled dataset and transfer
+metadata.}\label{mount-to-the-downscaled-dataset-and-transfer-metadata.}}
 
 We cannot download the entire dataset. Instead, we mount to that dataset
 by connecting to an api that route us to a particular part of the
@@ -993,9 +1100,25 @@ Element 3. Dataframe of available times
 ## 6           38721 2006-01-06
 \end{verbatim}
 
-\hypertarget{compile-your-data-request-to-send-to-the-server.}{%
-\subsection{Compile your data request to send to the
-server.}\label{compile-your-data-request-to-send-to-the-server.}}
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{tail}\NormalTok{(inputs[[}\DecValTok{2}\NormalTok{]])}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##       Available times      dates
+## 34328           73043 2099-12-26
+## 34329           73044 2099-12-27
+## 34330           73045 2099-12-28
+## 34331           73046 2099-12-29
+## 34332           73047 2099-12-30
+## 34333           73048 2099-12-31
+\end{verbatim}
+
+\hypertarget{decide-which-variables-scenarios-and-models-you-want-to-request}{%
+\subsubsection{Decide which Variables, Scenarios, and Models you want to
+request}\label{decide-which-variables-scenarios-and-models-you-want-to-request}}
 
 Your data order needs to include three things: Variable, Scenario, and
 Model. Your options can be found in the input elements we explored in
@@ -1050,19 +1173,37 @@ the previous section.
 \end{verbatim}
 
 \hypertarget{prepare-for-parallelization}{%
-\subsection{Prepare for
+\subsubsection{Prepare for
 parallelization}\label{prepare-for-parallelization}}
+
+We have requested enough information to exceed our download limit and we
+need to implement a `parallel' approach to get all the data we want.
+This strategy has each of the cores in your computer act as their own
+computer and individually make small requests from the server and then
+assemble all the little chunks into the final dataset you requested.
+Here we tell our computer that we are about to send a parallel request
+and tell the computer how we want to destribute the tasks we send.
 
 \begin{Shaded}
 \begin{Highlighting}[]
+\CommentTok{\# ask how many cores are available to be farmed out. I subtract one so I still have a core to use for controlling the whole process. }
 \NormalTok{n\_cores }\OtherTok{\textless{}{-}} \FunctionTok{availableCores}\NormalTok{() }\SpecialCharTok{{-}} \DecValTok{1}
+
+\CommentTok{\# set plan to take all cores except one. }
 \FunctionTok{plan}\NormalTok{(multisession, }\AttributeTok{workers =}\NormalTok{ n\_cores)}
 \end{Highlighting}
 \end{Shaded}
 
 \hypertarget{make-parallel-call-to-usgs-server.}{%
-\subsection{Make parallel call to USGS
+\subsubsection{Make parallel call to USGS
 server.}\label{make-parallel-call-to-usgs-server.}}
+
+This is the parallel function from the CFT package. It will shuttle all
+the data you requested, through all the cores you specified, for the
+latitude and longitude you requested. This took about 45 minutes on my
+home laptop with fiber internet. Virtual machines usually only have one
+core. If you're running this in the cloud, you may need to do some
+special configuration to get this to actually parallelize.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1072,7 +1213,12 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Shaded}
 
 \hypertarget{save-output}{%
-\subsection{Save output}\label{save-output}}
+\subsubsection{Save output}\label{save-output}}
+
+To save time, I have run the api request above and saved the results for
+future use. There is no reason to run the api request over and over
+again. It's easy to save the data once their downloaded and save
+yourself the download again in the future.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1082,7 +1228,11 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Shaded}
 
 \hypertarget{load-saved-output}{%
-\subsection{Load saved output}\label{load-saved-output}}
+\subsubsection{Load saved output}\label{load-saved-output}}
+
+If I have run my api request and saved it to my working directory, then
+I can load it from here anytime I need. This will save you time as you
+experiment with different downstream analyes.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1090,49 +1240,442 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
+\hypertarget{organize-climate-data}{%
+\subsection{Organize climate data}\label{organize-climate-data}}
+
+\hypertarget{join-data-with-dates}{%
+\subsubsection{Join data with dates}\label{join-data-with-dates}}
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{df\_precip }\OtherTok{\textless{}{-}}\NormalTok{ haskell }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{st\_drop\_geometry}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{select}\NormalTok{(time, }\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"pr"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{gather}\NormalTok{(}\AttributeTok{key =} \StringTok{"variable"}\NormalTok{, }\AttributeTok{value =} \StringTok{"value"}\NormalTok{, }\SpecialCharTok{{-}}\NormalTok{time)}
-\FunctionTok{head}\NormalTok{(df\_precip)}
+\CommentTok{\# make the time output into it\textquotesingle{}s own dataframe and change column name}
+\NormalTok{available\_times }\OtherTok{\textless{}{-}}\NormalTok{ inputs[[}\DecValTok{2}\NormalTok{]]}
+\FunctionTok{colnames}\NormalTok{(available\_times)[}\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}} \StringTok{"time"}
+
+\CommentTok{\# left join the time data into the spatial data}
+\NormalTok{haskell\_posix }\OtherTok{\textless{}{-}}\NormalTok{ haskell }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{left\_join}\NormalTok{(available\_times, }\AttributeTok{by=}\StringTok{"time"}\NormalTok{)}
+  
+\CommentTok{\# convert time format into POSIX, which is a format that deals with all the confusion of time and data formats (e.g. time zones and translation between numbers and word descriptions for time)}
+\NormalTok{haskell\_posix}\SpecialCharTok{$}\NormalTok{dates }\OtherTok{\textless{}{-}} \FunctionTok{as.POSIXct}\NormalTok{(haskell\_posix}\SpecialCharTok{$}\NormalTok{dates)}
+\FunctionTok{class}\NormalTok{(haskell\_posix}\SpecialCharTok{$}\NormalTok{dates)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-##    time                variable value
-## 1 38716 pr_BNU-ESM_r1i1p1_rcp85     0
-## 2 38717 pr_BNU-ESM_r1i1p1_rcp85     0
-## 3 38718 pr_BNU-ESM_r1i1p1_rcp85     0
-## 4 38719 pr_BNU-ESM_r1i1p1_rcp85     0
-## 5 38720 pr_BNU-ESM_r1i1p1_rcp85     0
-## 6 38721 pr_BNU-ESM_r1i1p1_rcp85     0
+## [1] "POSIXct" "POSIXt"
 \end{verbatim}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{df\_min\_temp }\OtherTok{\textless{}{-}}\NormalTok{ haskell }\SpecialCharTok{\%\textgreater{}\%}
+\CommentTok{\#reorder so that dates are the first column}
+\NormalTok{haskell\_posix }\OtherTok{\textless{}{-}}\NormalTok{ haskell\_posix[,}\FunctionTok{c}\NormalTok{(}\DecValTok{93}\NormalTok{,}\DecValTok{2}\NormalTok{, }\DecValTok{1}\NormalTok{,}\DecValTok{3}\SpecialCharTok{:}\DecValTok{92}\NormalTok{)]}
+\FunctionTok{colnames}\NormalTok{(haskell\_posix)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  [1] "dates"                              "time"                              
+##  [3] "pr_BNU-ESM_r1i1p1_rcp85"            "pr_CCSM4_r6i1p1_rcp85"             
+##  [5] "pr_CNRM-CM5_r1i1p1_rcp85"           "pr_CSIRO-Mk3-6-0_r1i1p1_rcp85"     
+##  [7] "pr_CanESM2_r1i1p1_rcp85"            "pr_GFDL-ESM2G_r1i1p1_rcp85"        
+##  [9] "pr_GFDL-ESM2M_r1i1p1_rcp85"         "pr_HadGEM2-CC365_r1i1p1_rcp85"     
+## [11] "pr_HadGEM2-ES365_r1i1p1_rcp85"      "pr_IPSL-CM5A-LR_r1i1p1_rcp85"      
+## [13] "pr_IPSL-CM5A-MR_r1i1p1_rcp85"       "pr_IPSL-CM5B-LR_r1i1p1_rcp85"      
+## [15] "pr_MIROC-ESM-CHEM_r1i1p1_rcp85"     "pr_MIROC-ESM_r1i1p1_rcp85"         
+## [17] "pr_MIROC5_r1i1p1_rcp85"             "pr_MRI-CGCM3_r1i1p1_rcp85"         
+## [19] "pr_NorESM1-M_r1i1p1_rcp85"          "pr_inmcm4_r1i1p1_rcp85"            
+## [21] "rhsmax_BNU-ESM_r1i1p1_rcp85"        "rhsmax_CNRM-CM5_r1i1p1_rcp85"      
+## [23] "rhsmax_CSIRO-Mk3-6-0_r1i1p1_rcp85"  "rhsmax_CanESM2_r1i1p1_rcp85"       
+## [25] "rhsmax_GFDL-ESM2G_r1i1p1_rcp85"     "rhsmax_HadGEM2-CC365_r1i1p1_rcp85" 
+## [27] "rhsmax_HadGEM2-ES365_r1i1p1_rcp85"  "rhsmax_IPSL-CM5A-LR_r1i1p1_rcp85"  
+## [29] "rhsmax_IPSL-CM5A-MR_r1i1p1_rcp85"   "rhsmax_IPSL-CM5B-LR_r1i1p1_rcp85"  
+## [31] "rhsmax_MIROC-ESM-CHEM_r1i1p1_rcp85" "rhsmax_MIROC-ESM_r1i1p1_rcp85"     
+## [33] "rhsmax_MIROC5_r1i1p1_rcp85"         "rhsmax_MRI-CGCM3_r1i1p1_rcp85"     
+## [35] "rhsmax_inmcm4_r1i1p1_rcp85"         "rhsmin_BNU-ESM_r1i1p1_rcp85"       
+## [37] "rhsmin_CNRM-CM5_r1i1p1_rcp85"       "rhsmin_CSIRO-Mk3-6-0_r1i1p1_rcp85" 
+## [39] "rhsmin_CanESM2_r1i1p1_rcp85"        "rhsmin_GFDL-ESM2G_r1i1p1_rcp85"    
+## [41] "rhsmin_GFDL-ESM2M_r1i1p1_rcp85"     "rhsmin_HadGEM2-CC365_r1i1p1_rcp85" 
+## [43] "rhsmin_HadGEM2-ES365_r1i1p1_rcp85"  "rhsmin_IPSL-CM5A-LR_r1i1p1_rcp85"  
+## [45] "rhsmin_IPSL-CM5A-MR_r1i1p1_rcp85"   "rhsmin_IPSL-CM5B-LR_r1i1p1_rcp85"  
+## [47] "rhsmin_MIROC-ESM-CHEM_r1i1p1_rcp85" "rhsmin_MIROC-ESM_r1i1p1_rcp85"     
+## [49] "rhsmin_MIROC5_r1i1p1_rcp85"         "rhsmin_MRI-CGCM3_r1i1p1_rcp85"     
+## [51] "tasmax_BNU-ESM_r1i1p1_rcp85"        "tasmax_CCSM4_r6i1p1_rcp85"         
+## [53] "tasmax_CNRM-CM5_r1i1p1_rcp85"       "tasmax_CSIRO-Mk3-6-0_r1i1p1_rcp85" 
+## [55] "tasmax_CanESM2_r1i1p1_rcp85"        "tasmax_GFDL-ESM2G_r1i1p1_rcp85"    
+## [57] "tasmax_GFDL-ESM2M_r1i1p1_rcp85"     "tasmax_HadGEM2-CC365_r1i1p1_rcp85" 
+## [59] "tasmax_HadGEM2-ES365_r1i1p1_rcp85"  "tasmax_IPSL-CM5A-LR_r1i1p1_rcp85"  
+## [61] "tasmax_IPSL-CM5A-MR_r1i1p1_rcp85"   "tasmax_IPSL-CM5B-LR_r1i1p1_rcp85"  
+## [63] "tasmax_MIROC-ESM-CHEM_r1i1p1_rcp85" "tasmax_MIROC-ESM_r1i1p1_rcp85"     
+## [65] "tasmax_MIROC5_r1i1p1_rcp85"         "tasmax_MRI-CGCM3_r1i1p1_rcp85"     
+## [67] "tasmax_NorESM1-M_r1i1p1_rcp85"      "tasmax_inmcm4_r1i1p1_rcp85"        
+## [69] "tasmin_BNU-ESM_r1i1p1_rcp85"        "tasmin_CCSM4_r6i1p1_rcp85"         
+## [71] "tasmin_CNRM-CM5_r1i1p1_rcp85"       "tasmin_CSIRO-Mk3-6-0_r1i1p1_rcp85" 
+## [73] "tasmin_CanESM2_r1i1p1_rcp85"        "tasmin_GFDL-ESM2G_r1i1p1_rcp85"    
+## [75] "tasmin_GFDL-ESM2M_r1i1p1_rcp85"     "tasmin_HadGEM2-CC365_r1i1p1_rcp85" 
+## [77] "tasmin_HadGEM2-ES365_r1i1p1_rcp85"  "tasmin_IPSL-CM5A-LR_r1i1p1_rcp85"  
+## [79] "tasmin_IPSL-CM5A-MR_r1i1p1_rcp85"   "tasmin_IPSL-CM5B-LR_r1i1p1_rcp85"  
+## [81] "tasmin_MIROC-ESM-CHEM_r1i1p1_rcp85" "tasmin_MIROC-ESM_r1i1p1_rcp85"     
+## [83] "tasmin_MIROC5_r1i1p1_rcp85"         "tasmin_MRI-CGCM3_r1i1p1_rcp85"     
+## [85] "tasmin_NorESM1-M_r1i1p1_rcp85"      "tasmin_inmcm4_r1i1p1_rcp85"        
+## [87] "pr_bcc-csm1-1_r1i1p1_rcp85"         "rhsmax_bcc-csm1-1_r1i1p1_rcp85"    
+## [89] "rhsmin_bcc-csm1-1_r1i1p1_rcp85"     "rhsmin_inmcm4_r1i1p1_rcp85"        
+## [91] "tasmax_bcc-csm1-1_r1i1p1_rcp85"     "tasmin_bcc-csm1-1_r1i1p1_rcp85"    
+## [93] "geometry"
+\end{verbatim}
+
+\hypertarget{temperature}{%
+\subsubsection{Temperature}\label{temperature}}
+
+\hypertarget{minimum-temperature}{%
+\paragraph{Minimum temperature}\label{minimum-temperature}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_min\_temp }\OtherTok{\textless{}{-}}\NormalTok{ haskell\_posix }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_drop\_geometry}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{select}\NormalTok{(time, }\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"tasmin"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{gather}\NormalTok{(}\AttributeTok{key =} \StringTok{"variable"}\NormalTok{, }\AttributeTok{value =} \StringTok{"value"}\NormalTok{, }\SpecialCharTok{{-}}\NormalTok{time)}
+  \FunctionTok{select}\NormalTok{(dates, dates,  }\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"tasmin"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{gather}\NormalTok{(}\AttributeTok{key =} \StringTok{"variable"}\NormalTok{, }\AttributeTok{value =} \StringTok{"value"}\NormalTok{, }\SpecialCharTok{{-}}\NormalTok{dates)}
 
 \NormalTok{df\_min\_temp }\OtherTok{\textless{}{-}}\NormalTok{ df\_min\_temp[}\FunctionTok{which}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{value }\SpecialCharTok{\textgreater{}} \DecValTok{200}\NormalTok{), ]}
 \NormalTok{df\_min\_temp}\SpecialCharTok{$}\NormalTok{variable }\OtherTok{\textless{}{-}} \FunctionTok{as.character}\NormalTok{(}\FunctionTok{as.numeric}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{variable)))}
 
+\CommentTok{\#df\_min\_temp\_TS \textless{}{-} as.xts(df\_min\_temp)}
 \FunctionTok{head}\NormalTok{(df\_min\_temp)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-##    time variable value
-## 1 38716        2 278.9
-## 2 38717        2 277.7
-## 3 38718        2 280.8
-## 4 38719        2 276.5
-## 5 38720        2 282.7
-## 6 38721        2 284.6
+##        dates variable value
+## 1 2006-01-01        2 273.9
+## 2 2006-01-02        2 280.6
+## 3 2006-01-03        2 280.9
+## 4 2006-01-04        2 284.3
+## 5 2006-01-05        2 290.5
+## 6 2006-01-06        2 291.0
 \end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{all\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_line}\NormalTok{()}\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{scale\_colour\_viridis\_d}\NormalTok{(}\AttributeTok{option=}\StringTok{"A"}\NormalTok{)}
+  
+
+\NormalTok{all\_climate\_projections}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-50-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ensemble\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_yellow) }\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{()}
+  
+
+\NormalTok{ensemble\_climate\_projections}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-51-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(stats)}
+\NormalTok{convert.fft }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(cs, }\AttributeTok{sample.rate=}\DecValTok{1}\NormalTok{) \{}
+\NormalTok{  cs }\OtherTok{\textless{}{-}}\NormalTok{ cs }\SpecialCharTok{/} \FunctionTok{length}\NormalTok{(cs) }\CommentTok{\# normalize}
+
+\NormalTok{  distance.center }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(c)}\FunctionTok{signif}\NormalTok{( }\FunctionTok{Mod}\NormalTok{(c),        }\DecValTok{4}\NormalTok{)}
+\NormalTok{  angle           }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(c)}\FunctionTok{signif}\NormalTok{( }\DecValTok{180}\SpecialCharTok{*}\FunctionTok{Arg}\NormalTok{(c)}\SpecialCharTok{/}\NormalTok{pi, }\DecValTok{3}\NormalTok{)}
+  
+\NormalTok{  df }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{cycle    =} \DecValTok{0}\SpecialCharTok{:}\NormalTok{(}\FunctionTok{length}\NormalTok{(cs)}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{),}
+                   \AttributeTok{freq     =} \DecValTok{0}\SpecialCharTok{:}\NormalTok{(}\FunctionTok{length}\NormalTok{(cs)}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{) }\SpecialCharTok{*}\NormalTok{ sample.rate }\SpecialCharTok{/} \FunctionTok{length}\NormalTok{(cs),}
+                   \AttributeTok{strength =} \FunctionTok{sapply}\NormalTok{(cs, distance.center),}
+                   \AttributeTok{delay    =} \FunctionTok{sapply}\NormalTok{(cs, angle))}
+\NormalTok{  df}
+\NormalTok{\}}
+
+\NormalTok{fft\_out  }\OtherTok{\textless{}{-}} \FunctionTok{convert.fft}\NormalTok{(}\FunctionTok{fft}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{value))}
+\FunctionTok{head}\NormalTok{(fft\_out)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   cycle         freq strength  delay
+## 1     0 0.000000e+00 285.1000  0.000
+## 2     1 1.537281e-06   1.0160 10.700
+## 3     2 3.074563e-06   1.0860 -4.560
+## 4     3 4.611844e-06   0.9302  2.350
+## 5     4 6.149126e-06   1.1560 -1.210
+## 6     5 7.686407e-06   0.6849  0.778
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(reticulate)}
+\NormalTok{x }\OtherTok{\textless{}{-}} \FunctionTok{r\_to\_py}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{time)}
+\NormalTok{ y }\OtherTok{\textless{}{-}} \FunctionTok{r\_to\_py}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{value)}
+\NormalTok{ minTemp }\OtherTok{\textless{}{-}} \FunctionTok{r\_to\_py}\NormalTok{(df\_min\_temp[,}\FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{,}\DecValTok{3}\NormalTok{)])}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{import}\NormalTok{ numpy }\ImportTok{as}\NormalTok{ np}
+\ImportTok{import}\NormalTok{ matplotlib.pyplot }\ImportTok{as}\NormalTok{ plt}
+ 
+\NormalTok{x }\OperatorTok{=} \BuiltInTok{list}\NormalTok{(}\BuiltInTok{range}\NormalTok{(}\BuiltInTok{len}\NormalTok{(r.x)))}
+\NormalTok{y }\OperatorTok{=}\NormalTok{ r.y}
+
+\CommentTok{\# apply fast fourier transform and take absolute values}
+\NormalTok{f}\OperatorTok{=}\BuiltInTok{abs}\NormalTok{(np.fft.fft(r.y))}
+
+\CommentTok{\# get the list of frequencies}
+\NormalTok{num}\OperatorTok{=}\NormalTok{np.size(x)}
+\NormalTok{freq }\OperatorTok{=}\NormalTok{ [i }\OperatorTok{/}\NormalTok{ num }\ControlFlowTok{for}\NormalTok{ i }\KeywordTok{in} \BuiltInTok{list}\NormalTok{(}\BuiltInTok{range}\NormalTok{(num))]}
+
+\CommentTok{\# get the list of spectrums}
+\NormalTok{spectrum}\OperatorTok{=}\NormalTok{f.real}\OperatorTok{*}\NormalTok{f.real}\OperatorTok{+}\NormalTok{f.imag}\OperatorTok{*}\NormalTok{f.imag}
+\NormalTok{nspectrum}\OperatorTok{=}\NormalTok{spectrum}\OperatorTok{/}\NormalTok{spectrum[}\DecValTok{0}\NormalTok{]}
+
+
+\NormalTok{plt.clf()}
+\CommentTok{\# plot nspectrum per frequency, with a semilog scale on nspectrum}
+\NormalTok{plt.semilogy(freq,nspectrum)}
+
+
+\NormalTok{plt.show()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# improve the plot by adding periods in number of weeks rather than  frequency}
+\ImportTok{import}\NormalTok{ pandas }\ImportTok{as}\NormalTok{ pd}
+\NormalTok{results }\OperatorTok{=}\NormalTok{ pd.DataFrame(\{}\StringTok{\textquotesingle{}freq\textquotesingle{}}\NormalTok{: freq, }\StringTok{\textquotesingle{}nspectrum\textquotesingle{}}\NormalTok{: nspectrum\})}
+\NormalTok{results[}\StringTok{\textquotesingle{}period\textquotesingle{}}\NormalTok{] }\OperatorTok{=}\NormalTok{ results[}\StringTok{\textquotesingle{}freq\textquotesingle{}}\NormalTok{] }\OperatorTok{/}\NormalTok{ (}\DecValTok{1}\OperatorTok{/}\DecValTok{52}\NormalTok{)}
+
+\NormalTok{plt.clf()}
+\NormalTok{plt.semilogy(results[}\StringTok{\textquotesingle{}period\textquotesingle{}}\NormalTok{], results[}\StringTok{\textquotesingle{}nspectrum\textquotesingle{}}\NormalTok{])}
+\NormalTok{plt.show()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# improve the plot by converting the data into grouped per week to avoid peaks}
+\NormalTok{results[}\StringTok{\textquotesingle{}period\_round\textquotesingle{}}\NormalTok{] }\OperatorTok{=}\NormalTok{ results[}\StringTok{\textquotesingle{}period\textquotesingle{}}\NormalTok{].}\BuiltInTok{round}\NormalTok{()}
+\NormalTok{grouped\_week }\OperatorTok{=}\NormalTok{ results.groupby(}\StringTok{\textquotesingle{}period\_round\textquotesingle{}}\NormalTok{)[}\StringTok{\textquotesingle{}nspectrum\textquotesingle{}}\NormalTok{].}\BuiltInTok{sum}\NormalTok{()}
+
+\NormalTok{plt.clf()}
+\NormalTok{plt.semilogy(grouped\_week.index, grouped\_week)}
+\NormalTok{plt.xticks([}\DecValTok{1}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{26}\NormalTok{, }\DecValTok{39}\NormalTok{, }\DecValTok{52}\NormalTok{])}
+\NormalTok{plt.show()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{temp }\OtherTok{\textless{}{-}} \FunctionTok{ts}\NormalTok{(df\_min\_temp[,}\DecValTok{3}\NormalTok{], }\AttributeTok{frequency =} \DecValTok{365}\NormalTok{, }\AttributeTok{start =} \FunctionTok{c}\NormalTok{(}\DecValTok{2006}\NormalTok{, }\DecValTok{1}\NormalTok{), }\AttributeTok{end =} \FunctionTok{c}\NormalTok{(}\DecValTok{2099}\NormalTok{,}\DecValTok{365}\NormalTok{))}
+\NormalTok{decomp\_temp }\OtherTok{\textless{}{-}} \FunctionTok{decompose}\NormalTok{(temp)}
+\FunctionTok{plot}\NormalTok{(decomp\_temp, }\AttributeTok{col=}\NormalTok{our\_purple)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-57-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(akl\_daily, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ max\_temp, }\AttributeTok{y =}\NormalTok{ month, }\AttributeTok{height =}\NormalTok{ ..density..)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_density\_ridges}\NormalTok{(}\AttributeTok{stat =} \StringTok{"density"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggfortify)}
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{stl}\NormalTok{(temp, }\AttributeTok{s.window =} \StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{), }\AttributeTok{ts.colour =}\NormalTok{ our\_purple)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{acf}\NormalTok{(temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-61-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{acf}\NormalTok{(temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{), }\AttributeTok{conf.int.fill =} \StringTok{\textquotesingle{}\#0000FF\textquotesingle{}}\NormalTok{, }\AttributeTok{conf.int.value =} \FloatTok{0.8}\NormalTok{, }\AttributeTok{conf.int.type =} \StringTok{\textquotesingle{}ma\textquotesingle{}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-62-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{spec.ar}\NormalTok{(temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-63-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(forecast)}
+\FunctionTok{ggtsdiag}\NormalTok{(}\FunctionTok{auto.arima}\NormalTok{(temp))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ggout }\OtherTok{\textless{}{-}} \FunctionTok{ggfreqplot}\NormalTok{(temp, }\AttributeTok{freq=}\DecValTok{100}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{() }
+\FunctionTok{ggsave}\NormalTok{(ggout, }\AttributeTok{filename =} \StringTok{"freqplot.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{11}\NormalTok{, }\AttributeTok{height =} \FloatTok{8.5}\NormalTok{, }\AttributeTok{unit=}\StringTok{"in"}\NormalTok{, }\AttributeTok{dpi=}\DecValTok{600}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(forecast)}
+\NormalTok{temp }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{stl}\NormalTok{(}\AttributeTok{s.window=}\StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{seasadj}\NormalTok{() }\OtherTok{{-}\textgreater{}}\NormalTok{ eeadj}
+\FunctionTok{autoplot}\NormalTok{(eeadj)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-66-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{eeadj }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{diff}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{ggtsdisplay}\NormalTok{(}\AttributeTok{main=}\StringTok{""}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-67-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{(fit }\OtherTok{\textless{}{-}} \FunctionTok{Arima}\NormalTok{(eeadj, }\AttributeTok{order=}\FunctionTok{c}\NormalTok{(}\DecValTok{5}\NormalTok{,}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Series: eeadj 
+## ARIMA(5,1,2) 
+## 
+## Coefficients:
+##          ar1      ar2     ar3      ar4     ar5      ma1     ma2
+##       1.3381  -0.6457  0.1785  -0.0374  0.0114  -1.4619  0.4723
+## s.e.  0.1189   0.1019  0.0293   0.0119  0.0057   0.1188  0.1161
+## 
+## sigma^2 = 13.99:  log likelihood = -93934.25
+## AIC=187884.5   AICc=187884.5   BIC=187952
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#(fit \textless{}{-} Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),}
+\CommentTok{\#  lambda=0))}
+
+\FunctionTok{checkresiduals}\NormalTok{(fit)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-68-1.pdf}
+
+\begin{verbatim}
+## 
+##  Ljung-Box test
+## 
+## data:  Residuals from ARIMA(5,1,2)
+## Q* = 1218.6, df = 723, p-value < 2.2e-16
+## 
+## Model df: 7.   Total lags used: 730
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{auto.arima}\NormalTok{(eeadj)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Series: eeadj 
+## ARIMA(5,1,2) 
+## 
+## Coefficients:
+##          ar1      ar2     ar3      ar4     ar5      ma1     ma2
+##       1.3381  -0.6457  0.1785  -0.0374  0.0114  -1.4619  0.4723
+## s.e.  0.1189   0.1019  0.0293   0.0119  0.0057   0.1188  0.1161
+## 
+## sigma^2 = 13.99:  log likelihood = -93934.25
+## AIC=187884.5   AICc=187884.5   BIC=187952
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{fit }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{forecast}\NormalTok{(}\AttributeTok{h=}\DecValTok{12}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{autoplot}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-70-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(fit)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-70-2.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{length}\NormalTok{(eeadj)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 34310
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ interval }\OtherTok{\textless{}{-}} \FunctionTok{unclass}\NormalTok{(fit}\SpecialCharTok{$}\NormalTok{tsp}\SpecialCharTok{$}\NormalTok{interval)}
+\NormalTok{    interval }\OtherTok{\textless{}{-}} \FunctionTok{Filter}\NormalTok{(}\ControlFlowTok{function}\NormalTok{(x) x}\SpecialCharTok{!=}\DecValTok{0}\NormalTok{, interval)}
+
+\NormalTok{eeadj }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{Arima}\NormalTok{( }\AttributeTok{order=}\FunctionTok{c}\NormalTok{(}\DecValTok{5}\NormalTok{,}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{forecast}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{autoplot}\NormalTok{() }\SpecialCharTok{+}
+    \FunctionTok{ylab}\NormalTok{(}\StringTok{"min temp"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{xlab}\NormalTok{(}\StringTok{"Year"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-71-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+\end{verbatim}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-72-1.pdf}
+\#\#\#\# Maximum temperature
+
+\hypertarget{relative-humidity}{%
+\subsubsection{Relative Humidity}\label{relative-humidity}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1140,12 +1683,54 @@ server.}\label{make-parallel-call-to-usgs-server.}}
   \FunctionTok{st\_drop\_geometry}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{select}\NormalTok{(time,}\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"rhs"}\NormalTok{)) ) }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{gather}\NormalTok{(}\AttributeTok{key =} \StringTok{"variable"}\NormalTok{, }\AttributeTok{value =} \StringTok{"value"}\NormalTok{, }\SpecialCharTok{{-}}\NormalTok{time)}
+\end{Highlighting}
+\end{Shaded}
 
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{all\_climate\_projections\_RH }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_RH, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+} 
+  \CommentTok{\#geom\_line()+}
+  
+  \FunctionTok{scale\_colour\_viridis\_d}\NormalTok{(}\AttributeTok{option=}\StringTok{"A"}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.8}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{) }
+  
+
+\NormalTok{all\_climate\_projections\_RH}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-74-1.pdf}
+
+\hypertarget{minimum-rh}{%
+\paragraph{Minimum RH}\label{minimum-rh}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
 \NormalTok{df\_RH\_min }\OtherTok{\textless{}{-}}\NormalTok{ haskell }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_drop\_geometry}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{select}\NormalTok{(time,}\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"rhsmin"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{gather}\NormalTok{(}\AttributeTok{key =} \StringTok{"variable"}\NormalTok{, }\AttributeTok{value =} \StringTok{"value"}\NormalTok{, }\SpecialCharTok{{-}}\NormalTok{time)}
+\FunctionTok{head}\NormalTok{(df\_RH\_min)}
+\end{Highlighting}
+\end{Shaded}
 
+\begin{verbatim}
+##    time                    variable value
+## 1 38716 rhsmin_BNU-ESM_r1i1p1_rcp85   100
+## 2 38717 rhsmin_BNU-ESM_r1i1p1_rcp85    79
+## 3 38718 rhsmin_BNU-ESM_r1i1p1_rcp85    54
+## 4 38719 rhsmin_BNU-ESM_r1i1p1_rcp85    67
+## 5 38720 rhsmin_BNU-ESM_r1i1p1_rcp85    70
+## 6 38721 rhsmin_BNU-ESM_r1i1p1_rcp85    63
+\end{verbatim}
+
+\hypertarget{maximum-rh}{%
+\paragraph{Maximum RH}\label{maximum-rh}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
 \NormalTok{df\_RH\_max }\OtherTok{\textless{}{-}}\NormalTok{ haskell }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{st\_drop\_geometry}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{select}\NormalTok{(time,}\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"rhsmax"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
@@ -1164,22 +1749,31 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 ## 6 38721 rhsmax_BNU-ESM_r1i1p1_rcp85   100
 \end{verbatim}
 
+\hypertarget{precipitation}{%
+\subsubsection{Precipitation}\label{precipitation}}
+
+\hypertarget{zero-inflated-data}{%
+\paragraph{Zero-inflated data}\label{zero-inflated-data}}
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{all\_climate\_projections\_RH }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_RH, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+} 
-  \CommentTok{\#geom\_line()+}
-  
-  \FunctionTok{scale\_colour\_viridis\_d}\NormalTok{(}\AttributeTok{option=}\StringTok{"A"}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.8}\NormalTok{) }\SpecialCharTok{+}
-  \FunctionTok{geom\_smooth}\NormalTok{() }\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{() }\SpecialCharTok{+}
-  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{) }
-  
-
-\NormalTok{all\_climate\_projections\_RH}
+\NormalTok{df\_precip }\OtherTok{\textless{}{-}}\NormalTok{ haskell\_posix }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{st\_drop\_geometry}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(dates, }\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"pr"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{gather}\NormalTok{(}\AttributeTok{key =} \StringTok{"variable"}\NormalTok{, }\AttributeTok{value =} \StringTok{"value"}\NormalTok{, }\SpecialCharTok{{-}}\NormalTok{dates)}
+\FunctionTok{head}\NormalTok{(df\_precip)}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-49-1.pdf}
+\begin{verbatim}
+##        dates                variable value
+## 1 2006-01-01 pr_BNU-ESM_r1i1p1_rcp85     0
+## 2 2006-01-02 pr_BNU-ESM_r1i1p1_rcp85     0
+## 3 2006-01-03 pr_BNU-ESM_r1i1p1_rcp85     0
+## 4 2006-01-04 pr_BNU-ESM_r1i1p1_rcp85     0
+## 5 2006-01-05 pr_BNU-ESM_r1i1p1_rcp85     0
+## 6 2006-01-06 pr_BNU-ESM_r1i1p1_rcp85     0
+\end{verbatim}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1194,64 +1788,192 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-50-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-78-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{all\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+} 
-  \FunctionTok{geom\_line}\NormalTok{()}\SpecialCharTok{+}
-  \FunctionTok{geom\_smooth}\NormalTok{() }\SpecialCharTok{+}
-  \FunctionTok{scale\_colour\_viridis\_d}\NormalTok{(}\AttributeTok{option=}\StringTok{"A"}\NormalTok{)}
-  
+\NormalTok{precip\_ts }\OtherTok{\textless{}{-}} \FunctionTok{ts}\NormalTok{(df\_precip[,}\DecValTok{3}\NormalTok{], }\AttributeTok{frequency =} \DecValTok{365}\NormalTok{, }\AttributeTok{start =} \FunctionTok{c}\NormalTok{(}\DecValTok{2006}\NormalTok{, }\DecValTok{1}\NormalTok{), }\AttributeTok{end =} \FunctionTok{c}\NormalTok{(}\DecValTok{2099}\NormalTok{,}\DecValTok{365}\NormalTok{))}
+\NormalTok{decomp\_precip }\OtherTok{\textless{}{-}} \FunctionTok{decompose}\NormalTok{(precip\_ts)}
+\FunctionTok{plot}\NormalTok{(decomp\_precip, }\AttributeTok{col=}\NormalTok{our\_purple)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-79-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{all\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{()}
 
 \NormalTok{all\_climate\_projections}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-51-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-80-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ensemble\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_yellow) }\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-  
-
-\NormalTok{ensemble\_climate\_projections}
+\FunctionTok{plot.ts}\NormalTok{(decomp\_precip}\SpecialCharTok{$}\NormalTok{trend, }\AttributeTok{col=}\NormalTok{our\_purple)}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-52-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-81-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{spec.ar}\NormalTok{(precip\_ts, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-52-2.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-82-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{all\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+} 
-  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-  
-
-\NormalTok{all\_climate\_projections}
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{stl}\NormalTok{(precip\_ts, }\AttributeTok{s.window =} \StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{), }\AttributeTok{ts.colour =}\NormalTok{ our\_purple)}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-53-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-83-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{acf}\NormalTok{(precip\_ts, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-84-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{acf}\NormalTok{(precip\_ts, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{), }\AttributeTok{conf.int.fill =} \StringTok{\textquotesingle{}\#0000FF\textquotesingle{}}\NormalTok{, }\AttributeTok{conf.int.value =} \FloatTok{0.8}\NormalTok{, }\AttributeTok{conf.int.type =} \StringTok{\textquotesingle{}ma\textquotesingle{}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-85-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{precip\_ts }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{stl}\NormalTok{(}\AttributeTok{s.window=}\StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{seasadj}\NormalTok{() }\OtherTok{{-}\textgreater{}}\NormalTok{ eeadj}
+\FunctionTok{autoplot}\NormalTok{(eeadj)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-86-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{eeadj }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{diff}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{ggtsdisplay}\NormalTok{(}\AttributeTok{main=}\StringTok{""}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-87-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{auto.arima}\NormalTok{(eeadj)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Series: eeadj 
+## ARIMA(3,0,1) with non-zero mean 
+## 
+## Coefficients:
+##          ar1      ar2     ar3      ma1    mean
+##       0.9563  -0.2837  0.0557  -0.5816  2.5955
+## s.e.  0.1281   0.0476  0.0075   0.1282  0.0549
+## 
+## sigma^2 = 43.63:  log likelihood = -113453.1
+## AIC=226918.1   AICc=226918.1   BIC=226968.8
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{(fit }\OtherTok{\textless{}{-}} \FunctionTok{Arima}\NormalTok{(eeadj, }\AttributeTok{order=}\FunctionTok{c}\NormalTok{(}\DecValTok{3}\NormalTok{,}\DecValTok{0}\NormalTok{,}\DecValTok{1}\NormalTok{)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Series: eeadj 
+## ARIMA(3,0,1) with non-zero mean 
+## 
+## Coefficients:
+##          ar1      ar2     ar3      ma1    mean
+##       0.9563  -0.2837  0.0557  -0.5816  2.5955
+## s.e.  0.1281   0.0476  0.0075   0.1282  0.0549
+## 
+## sigma^2 = 43.63:  log likelihood = -113453.1
+## AIC=226918.1   AICc=226918.1   BIC=226968.8
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#(fit \textless{}{-} Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),}
+\CommentTok{\#  lambda=0))}
+
+\FunctionTok{checkresiduals}\NormalTok{(fit)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-89-1.pdf}
+
+\begin{verbatim}
+## 
+##  Ljung-Box test
+## 
+## data:  Residuals from ARIMA(3,0,1) with non-zero mean
+## Q* = 735.58, df = 726, p-value = 0.3944
+## 
+## Model df: 4.   Total lags used: 730
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{fit }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{forecast}\NormalTok{(}\AttributeTok{h=}\DecValTok{12}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{autoplot}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-90-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(fit)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-90-2.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{length}\NormalTok{(eeadj)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 34310
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ interval }\OtherTok{\textless{}{-}} \FunctionTok{unclass}\NormalTok{(fit}\SpecialCharTok{$}\NormalTok{tsp}\SpecialCharTok{$}\NormalTok{interval)}
+\NormalTok{    interval }\OtherTok{\textless{}{-}} \FunctionTok{Filter}\NormalTok{(}\ControlFlowTok{function}\NormalTok{(x) x}\SpecialCharTok{!=}\DecValTok{0}\NormalTok{, interval)}
+
+\NormalTok{eeadj }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{Arima}\NormalTok{( }\AttributeTok{order=}\FunctionTok{c}\NormalTok{(}\DecValTok{3}\NormalTok{,}\DecValTok{0}\NormalTok{,}\DecValTok{1}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{forecast}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{autoplot}\NormalTok{() }\SpecialCharTok{+}
+    \FunctionTok{ylab}\NormalTok{(}\StringTok{"min temp"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{xlab}\NormalTok{(}\StringTok{"Year"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-91-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{df\_precip\_2 }\OtherTok{\textless{}{-}}\NormalTok{ df\_precip[}\FunctionTok{which}\NormalTok{(df\_precip}\SpecialCharTok{$}\NormalTok{value }\SpecialCharTok{!=} \DecValTok{0}\NormalTok{),]}
 
-\NormalTok{ensemble\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_2, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
+\NormalTok{ensemble\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_2, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
    \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
   \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_yellow)}\SpecialCharTok{+}
   \FunctionTok{theme\_tufte}\NormalTok{()}
@@ -1261,17 +1983,17 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-54-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-92-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
+\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
      \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
   \FunctionTok{theme\_tufte}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-54-2.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-92-2.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1311,7 +2033,7 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
+\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
      \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip, }\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+} 
      \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_95, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
     \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_precip\_quant\_96, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
@@ -1325,6 +2047,6 @@ server.}\label{make-parallel-call-to-usgs-server.}}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-56-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-94-1.pdf}
 
 \end{document}
