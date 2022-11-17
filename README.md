@@ -24,14 +24,16 @@ library(ggthemes)
 library(ggpattern)
 library(magick)
 library(future)
+library(forecast)
 library(tidytable)
 library(janitor)
 options(timeout = 600)
 library(ggfortify)
-library(forecast)
 library(reticulate)
 library(osmdata)
 library(osmextract)
+library(changepoint)
+library(weathermetrics)
 ```
 
 ``` r
@@ -50,7 +52,7 @@ py_install("geopandas")
 
 ``` r
 seamless_image_filenames <- c(
-  'Haskell_logo copy.png'
+  'Haskell_logo.png'
 )
 ```
 
@@ -98,7 +100,7 @@ bb_sf <- getbb("Lawrence, Kansas", format_out = "sf_polygon")
 ggplot(data=bb_sf$multipolygon) + geom_sf(fill=our_beige, color=our_purple) + theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-53-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 2.  Find any buildings associated with any University in our “Lawrence,
     Kansas” bounding box.
@@ -159,12 +161,11 @@ University_buildings <- oe_get(
 colnames(University_buildings)
 ```
 
-    ##  [1] "osm_id"      "osm_way_id"  "name"        "type"        "aeroway"    
-    ##  [6] "amenity"     "admin_level" "barrier"     "boundary"    "building"   
-    ## [11] "craft"       "geological"  "historic"    "land_area"   "landuse"    
-    ## [16] "leisure"     "man_made"    "military"    "natural"     "office"     
-    ## [21] "place"       "shop"        "sport"       "tourism"     "operator"   
-    ## [26] "other_tags"  "geometry"
+    ##  [1] "osm_id"      "osm_way_id"  "name"        "type"        "aeroway"     "amenity"    
+    ##  [7] "admin_level" "barrier"     "boundary"    "building"    "craft"       "geological" 
+    ## [13] "historic"    "land_area"   "landuse"     "leisure"     "man_made"    "military"   
+    ## [19] "natural"     "office"      "place"       "shop"        "sport"       "tourism"    
+    ## [25] "operator"    "other_tags"  "geometry"
 
 3.  Use the ‘operator’ column to identify the owner of those buildings
     and filter down to building operated by Haskell Indian Nations
@@ -195,7 +196,7 @@ basemap <- ggplot(data = st_as_sf(boundaries1)) +
 basemap
 ```
 
-![This seems to match.](Haskell_files/figure-gfm/unnamed-chunk-59-1.png)
+![This seems to match.](Haskell_files/figure-gfm/unnamed-chunk-15-1.png)
 \#### OSM in python using osmnx The python interface for OSM uses a
 slightly different syntax to write the requests, but it’s calling the
 same OSM api that the R packages call. You still submit a plain-language
@@ -229,7 +230,7 @@ buildings.plot()
 plt.show()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-60-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ## Build a basemap from OpenStreetMap
 
@@ -252,7 +253,7 @@ haskell_poly <- amenity_poly %>%
   st_as_sf()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-62-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 2.  Download street vector layers The street vector is divided into two
     different downloads in order to create two different objects for
@@ -272,7 +273,7 @@ streets_crop <- big_streets_lines %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-64-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 The second street download is for the small side streets and footpaths.
 These lines will be more faint and in the background.
@@ -289,7 +290,7 @@ small_streets_crop <- small_streets %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-66-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 
 3.  Download water features. The water features are first divided into
     moving and stationary water. We will download the river layer from
@@ -316,7 +317,7 @@ Kansas_river_multi <- water %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-69-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
 After removing the Kansas river, we are left with a number of remaining
 waterways that are stored as both linestrings and multilinestrings. We
@@ -329,7 +330,7 @@ small_water_lines <- water %>%
   st_crop(y = c(ymin = bb[2,1], ymax = bb[2,2], xmin = bb[1,1], xmax = bb[1,2]))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-71-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 The stationary water bodies are a subcategory under the key=natural and
 the value=water. We ask for the extra column named water to be include
@@ -351,7 +352,7 @@ water_body_crop <- water_body %>%
   st_as_sf() 
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-73-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
 
 ### Stack downloaded OSM layers into a final basemap.
 
@@ -488,19 +489,6 @@ of those dimensions.
 inputs <- cft::available_data()
 ```
 
-    ## Trying to connect to the USGS.gov API
-
-    ## not a file: 
-    ## ' https://cida.usgs.gov/thredds/dodsC/macav2metdata_daily_future '
-    ## 
-    ## ... attempting remote connection
-
-    ## Connection succeeded.
-
-    ## Reading results
-
-    ## Converting into an R data.table
-
 Element 1. Dataframe of availble data and descriptions of each of those
 variables.
 
@@ -514,12 +502,9 @@ Element 2. Short list of available data you can request
 head(unique(inputs[[1]]$Variable))
 ```
 
-    ## [1] "Specific Humidity"                  
-    ## [2] "Precipitation"                      
-    ## [3] "Maximum Relative Humidity"          
-    ## [4] "Minimum Relative Humidity"          
-    ## [5] "Surface Downswelling Shortwave Flux"
-    ## [6] "Maximum Temperature"
+    ## [1] "Specific Humidity"                   "Precipitation"                      
+    ## [3] "Maximum Relative Humidity"           "Minimum Relative Humidity"          
+    ## [5] "Surface Downswelling Shortwave Flux" "Maximum Temperature"
 
 Element 3. Dataframe of available times
 
@@ -626,6 +611,19 @@ load(file = "haskell.RData")
 
 ## Organize climate data
 
+Our requested climate data are returned from the api server as two data
+frames. The first data frame is the columns of data that are indexed by
+a time reference number and the second, which is the list translations
+from time reference number to actual time. We will join those tables
+here to make those data easier to work with. Once joined, we convert the
+time labels from characters to POSIX. POSIX is a special way of handling
+time and date data in R. We reorder the columns so that the POSIX data
+is in the first column. This will make it easy to later create a time
+series object (ts) that can go into our statistical and forecasting
+functions. Finally, we print the column names of the final transformed
+data frame to verify that we have time data in the first column and all
+the requested data as columns after that.
+
 ### Join data with dates
 
 ``` r
@@ -698,9 +696,33 @@ colnames(haskell_posix)
     ## [91] "tasmax_bcc-csm1-1_r1i1p1_rcp85"     "tasmin_bcc-csm1-1_r1i1p1_rcp85"    
     ## [93] "geometry"
 
+We imported temperature data, humidity data, and precipitation data.
+Each of these are handled and modeled in a slightly different way. Here,
+we’ll work through those three data types in sequence and try to draw
+inference from synthesizing those three pieces of information.
+
 ### Temperature
 
+Temperature is the most talked-about component of climate. It’s a great
+indicator of the weather overall, it’s a direct output of climate
+models, and it’s a defining characteristic of ecological niches.
+
 #### Minimum temperature
+
+1.  Organize data The climate data we are importing are ‘downscaled’
+    from much larger and more complex models. This process of
+    downscaling summarized that more complicated model. This means that
+    we don’t need to calculate our own summary statistics (e.g. mean,
+    minimum, or maximum) because we download those summary statistics
+    instead of the raw data. We start by filtering our full downloaded
+    data set and create a new data set with only minimum temperatures in
+    it. We ordered one scenario from 18 different climate modeling
+    agencies so, our filtered data set should be 18 columns of data plus
+    geography and time tags. We then use the gather() function to
+    reorganize that table so that we have three columns: dates,
+    variable, and value. This reorganization makes the data easy to
+    convert into a time series (ts) object for later analysis and
+    visualization.
 
 ``` r
 df_min_temp <- haskell_posix %>%
@@ -711,175 +733,202 @@ df_min_temp <- haskell_posix %>%
 df_min_temp <- df_min_temp[which(df_min_temp$value > 200), ]
 df_min_temp$variable <- as.character(as.numeric(as.factor(df_min_temp$variable)))
 
-#df_min_temp_TS <- as.xts(df_min_temp)
-head(df_min_temp)
+colnames(df_min_temp)
 ```
 
+    ## [1] "dates"    "variable" "value"
+
+2.  Plot data If we plot our filtered minimum temperature data, we see a
+    chaotic mess because all 18 models are represented on the same
+    graph. We probably want to consider all of the models together.
+
 ``` r
-all_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value, color = variable)) + 
+all_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value, color = variable)) +
   geom_line()+
   geom_smooth() +
   scale_colour_viridis_d(option="A")
-  
 
 all_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-95-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-51-1.png)<!-- -->
+
+3.  Plot as ensemble and fit a general additive model (GAM) to those
+    data If we plot those same data again without the model distinction,
+    we see the ensemble of all 18 climate models. These data were
+    standardized during downscaling, so they are directly comparable now
+    without any more fuss. Notice that these data are in Kelvin. You
+    should alway complet all of your analyses in Kelvin and only
+    translate to Celsius or Fahrenheit for final figures for a general
+    audience. We apply a general additive model to the data to see what
+    the basic trend looks like. It looks like we should expect a steady
+    increasing in temperature from 281K to 289K between now and 2099.
+    This line doesn’t offer much refinement to our existing expectation.
+    Visually, it sits below an area of high data density and it doesn’t
+    help us explain any of the season variation we see in the data. This
+    fit makes us want something better.
 
 ``` r
-ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value)) + 
+ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = kelvin.to.fahrenheit(value))) + 
   geom_line(color=our_purple)+
-  geom_smooth(color=our_yellow) +
-  theme_tufte()
-  
+  geom_smooth(color=our_yellow) + #This applies a GAM (general additive model) to the data to find a trend line. 
+  theme_tufte() +
+  geom_hline(yintercept=32)+
+  geom_hline(yintercept=87)+
+  geom_hline(yintercept=105)
 
 ensemble_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-96-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-52-1.png)<!-- -->
+
+Number of days below freezing. Each generation will have one less month
+of freeze.
+
+Highest daily low. Each generation experiences an additional 10 days per
+year with a daily low above 87 degrees F. Three generations see a lot of
+change. for those trying to accomplish 8 generation planning, modern
+science can only project less than half way there.
 
 ``` r
-library(stats)
-convert.fft <- function(cs, sample.rate=1) {
-  cs <- cs / length(cs) # normalize
+df_min_temp_F <- df_min_temp
+df_min_temp_F$value <- kelvin.to.fahrenheit(df_min_temp_F$value)
+df_min_temp_F$dates <- format(df_min_temp_F$dates, format = "%Y")
 
-  distance.center <- function(c)signif( Mod(c),        4)
-  angle           <- function(c)signif( 180*Arg(c)/pi, 3)
-  
-  df <- data.frame(cycle    = 0:(length(cs)-1),
-                   freq     = 0:(length(cs)-1) * sample.rate / length(cs),
-                   strength = sapply(cs, distance.center),
-                   delay    = sapply(cs, angle))
-  df
-}
+below_freezing <- df_min_temp_F %>%
+  filter(value <=32) %>%
+  group_by(dates)%>%
+  summarise(cold_counts = n()/18)
 
-fft_out  <- convert.fft(fft(df_min_temp$value))
-head(fft_out)
+high_lows <- df_min_temp_F %>%
+  filter(value >=87) %>%
+  group_by(dates)%>%
+  summarise(high_lows_counts = n()/18)
+
+ scorching_nights <- df_min_temp_F %>%
+  filter(value >=105) %>%
+  group_by(dates)%>%
+  summarise(scorching_nights_counts = n()/18)
+
+  ggplot(data = below_freezing, aes(x = dates, y=cold_counts)) +
+           geom_point(color=our_purple)+
+    geom_point(data = high_lows, aes(x = dates, y=high_lows_counts),color=our_yellow)+
+    geom_point(data = scorching_nights, aes(x = dates, y=scorching_nights_counts),color=our_blue)+
+  theme_tufte() +
+    ylim(0,100) + 
+    ylab("number of days") +
+  geom_hline(yintercept=0)+
+  geom_hline(yintercept=35)
 ```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-53-1.png)<!-- -->
 
 ``` r
-library(reticulate)
-x <- r_to_py(df_min_temp$time)
- y <- r_to_py(df_min_temp$value)
- minTemp <- r_to_py(df_min_temp[,c(1,3)])
+min_temp <- ts(df_min_temp[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
 ```
 
-``` python
-import numpy as np
-import matplotlib.pyplot as plt
- 
-x = list(range(len(r.x)))
-y = r.y
+4.  Decompose the time series using fourier analysis. Fourier analyses
+    are a convenient way to decompose repeating waves and are a mainstay
+    of time series analyses. The analysis presented here finds the
+    seasonal harmonic in the data and subtracts that harmonic from the
+    data to show the difference between trend and noise. We start by
+    converting our data into a ts object and passes that ts object to
+    the decompose() function. When we plot that deconstruction, we see
+    that the resultant trend line is much more nuanced than our previous
+    fit.
 
-# apply fast fourier transform and take absolute values
-f=abs(np.fft.fft(r.y))
-
-# get the list of frequencies
-num=np.size(x)
-freq = [i / num for i in list(range(num))]
-
-# get the list of spectrums
-spectrum=f.real*f.real+f.imag*f.imag
-nspectrum=spectrum/spectrum[0]
-
-
-plt.clf()
-# plot nspectrum per frequency, with a semilog scale on nspectrum
-plt.semilogy(freq,nspectrum)
-
-
-plt.show()
-```
-
-``` python
-# improve the plot by adding periods in number of weeks rather than  frequency
-import pandas as pd
-results = pd.DataFrame({'freq': freq, 'nspectrum': nspectrum})
-results['period'] = results['freq'] / (1/52)
-
-plt.clf()
-plt.semilogy(results['period'], results['nspectrum'])
-plt.show()
-```
-
-``` python
-# improve the plot by converting the data into grouped per week to avoid peaks
-results['period_round'] = results['period'].round()
-grouped_week = results.groupby('period_round')['nspectrum'].sum()
-
-plt.clf()
-plt.semilogy(grouped_week.index, grouped_week)
-plt.xticks([1, 13, 26, 39, 52])
-plt.show()
-```
+Here is the GAM fit
 
 ``` r
-temp <- ts(df_min_temp[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
-decomp_temp <- decompose(temp)
-plot(decomp_temp, col=our_purple)
+min_temp %>%
+  decompose() %>%
+  autoplot() + theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-102-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-55-1.png)<!-- -->
+
+We can also use a different decompositions model, here the STL model,
+which is a loess model for time series data. The STL
+
+Here is the loess fit
 
 ``` r
-ggplot(akl_daily, aes(x = max_temp, y = month, height = ..density..)) +
-  geom_density_ridges(stat = "density")
+min_temp %>%
+ stl(s.window = "periodic") %>%
+  autoplot() + theme_tufte()
 ```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-56-1.png)<!-- --> \####
+Estimate Spectral Density of a Time Series This is the fourier spectral
+breakdown for the decomposition. You can see the strong first harmonic
+that is easy to pull out and makes the decomposition of this data go
+relatively fast for this size of dataset.
 
 ``` r
-library(ggfortify)
-autoplot(stl(temp, s.window = 'periodic'), ts.colour = our_purple)
+autoplot(spec.ar(min_temp, plot = FALSE))+ theme_tufte()
 ```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-57-1.png)<!-- -->
+
+#### Verify that our use of an additive model was appropriate.
+
+Time series can come in a couple different flavors. The two that are
+common in decomposition analyses are additive and multiplicative
+harmonics. We made the assumption that temperature increase was additive
+and we can validate that assumption here with an autocorrelation
+function (ACF), which is the coefficient of correlation between two
+values in a time series. The results show the gradual decline of ACF
+along the time series. This is the result of our one-step-ahead climate
+predictions that use the previous year to predict the next year. this
+means that there is strong correlation between adjoining years, but that
+the correlation degrades in one direction from no into the future. You
+see that years in the near future are tightly coupled with each other
+but that covariance degrades over time so we have less confidence in the
+end of the time series than we do about the beginning. A multiplicative
+relationship would inflate rapidly over time and show an exponential
+relationship here. You might expect multiplicative relationships with
+time series of demographic growth, stock trends, or social media ‘likes’
+because those all present mechanisms that can multiply rather than add.
 
 ``` r
-autoplot(acf(temp, plot = FALSE))
+autoplot(acf(min_temp, plot = FALSE))+ theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-106-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-58-1.png)<!-- -->
+
+#### Forecast models
+
+We need to make an important distinctions between the different types of
+forecasting happening in this analysis. Our climate data are forecast
+into the future using global mechanistic models simulating the collision
+of air molecules and the accumulation of gasses that change climate and
+weather patterns over decades. Those models produce the data we download
+and use as raw data to describe our local future. The forecasting we’re
+about to do, we’re looking for statistical trends contained within that
+data. There is no natural or environmental mechanism in this
+forecasting. The arima forecast is a statistical forecasting method that
+fits a model to the data using the same decomposition method we
+described above (GAN) and then calculates an acceptable forecast window
+based on the predictability of the trend relative to the data.
 
 ``` r
-autoplot(acf(temp, plot = FALSE), conf.int.fill = '#0000FF', conf.int.value = 0.8, conf.int.type = 'ma')
+seasonally_adjusted_min_temp <- min_temp %>% stl(s.window='periodic') %>% seasadj() 
+min_plot <- autoplot(seasonally_adjusted_min_temp) 
+#+ 
+ # theme_tufte() + 
+  #geom_smooth(col=our_yellow)
+
+min_plot
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-107-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-59-1.png)<!-- -->
 
 ``` r
-autoplot(spec.ar(temp, plot = FALSE))
+arima_min_temp <- auto.arima(seasonally_adjusted_min_temp)
+arima_min_temp
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-108-1.png)<!-- -->
-
-``` r
-library(forecast)
-ggtsdiag(auto.arima(temp))
-```
-
-``` r
-ggout <- ggfreqplot(temp, freq=100) +
-  theme_tufte() 
-ggsave(ggout, filename = "freqplot.png", width = 11, height = 8.5, unit="in", dpi=600)
-```
-
-``` r
-library(forecast)
-temp %>% stl(s.window='periodic') %>% seasadj() -> eeadj
-autoplot(eeadj)
-```
-
-![](Haskell_files/figure-gfm/unnamed-chunk-111-1.png)<!-- -->
-
-``` r
-eeadj %>% diff() %>% ggtsdisplay(main="")
-```
-
-![](Haskell_files/figure-gfm/unnamed-chunk-112-1.png)<!-- -->
-
-``` r
-(fit <- Arima(eeadj, order=c(5,1,2)))
-```
-
-    ## Series: eeadj 
+    ## Series: seasonally_adjusted_min_temp 
     ## ARIMA(5,1,2) 
     ## 
     ## Coefficients:
@@ -891,13 +940,17 @@ eeadj %>% diff() %>% ggtsdisplay(main="")
     ## AIC=187884.5   AICc=187884.5   BIC=187952
 
 ``` r
-#(fit <- Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),
-#  lambda=0))
-
-checkresiduals(fit)
+bullseye <- autoplot(arima_min_temp) 
+bullseye
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-113-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-61-1.png)<!-- -->
+
+``` r
+checkresiduals(arima_min_temp)
+```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-62-1.png)<!-- -->
 
     ## 
     ##  Ljung-Box test
@@ -908,61 +961,133 @@ checkresiduals(fit)
     ## Model df: 7.   Total lags used: 730
 
 ``` r
-auto.arima(eeadj)
+seasonally_adjusted_min_temp %>% diff() %>% ggtsdisplay(main="") + theme_tufte()
 ```
 
-    ## Series: eeadj 
-    ## ARIMA(5,1,2) 
+![](Haskell_files/figure-gfm/unnamed-chunk-63-1.png)<!-- -->![](Haskell_files/figure-gfm/unnamed-chunk-63-2.png)<!-- -->
+
+``` r
+autoplot(cpt.meanvar(seasonally_adjusted_min_temp), cpt.colour = 'blue', cpt.linetype = 'solid')
+```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-64-1.png)<!-- -->
+
+``` r
+arima_min_temp %>% forecast(h=2400) %>% autoplot()
+```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-65-1.png)<!-- -->
+
+#### Maximum temperature
+
+The cyverse folks join us from Arizona will think thi
+
+``` r
+df_max_temp <- haskell_posix %>%
+  st_drop_geometry() %>%
+  select(dates, dates,  which(startsWith(colnames(haskell), "tasmax"))) %>%
+  gather(key = "variable", value = "value", -dates)
+
+df_max_temp <- df_max_temp[which(df_max_temp$value > 200), ]
+df_max_temp$variable <- as.character(as.numeric(as.factor(df_max_temp$variable)))
+
+#df_min_temp_TS <- as.xts(df_min_temp)
+colnames(df_max_temp)
+```
+
+    ## [1] "dates"    "variable" "value"
+
+``` r
+ensemble_climate_projections <- ggplot(data= df_max_temp, aes(x = dates, y = kelvin.to.fahrenheit(value))) + 
+  geom_line(color=our_purple)+
+  geom_smooth(color=our_yellow) + #This applies a GAM (general additive model) to the data to find a trend line. 
+  theme_tufte() +
+  geom_hline(yintercept=114)+
+  geom_hline(yintercept=32) + 
+  ylab("temperature (F)")
+
+ensemble_climate_projections
+```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-67-1.png)<!-- -->
+
+``` r
+df_max_temp_F <- df_max_temp
+df_max_temp_F$value <- kelvin.to.fahrenheit(df_max_temp_F$value)
+df_max_temp_F$dates <- format(df_max_temp_F$dates, format = "%Y")
+
+beyond_max_temp <- df_max_temp_F %>%
+  filter(value >=114) %>%
+  group_by(dates)%>%
+  summarise(beyond_max = n()/18)
+
+max_below_freezing <- df_max_temp_F %>%
+  filter(value <=32) %>%
+  group_by(dates)%>%
+  summarise(below_freezing = n()/18)
+
+  ggplot(data = beyond_max_temp, aes(x = dates, y=beyond_max)) +
+           geom_point(color=our_purple)+
+    geom_point(data = max_below_freezing, aes(x = dates, y=below_freezing), color=our_yellow)+
+  theme_tufte() +
+    ylim(0,15) +
+    ylab("number of days")
+```
+
+![](Haskell_files/figure-gfm/unnamed-chunk-68-1.png)<!-- -->
+
+``` r
+max_temp <- ts(df_max_temp[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
+```
+
+``` r
+seasonally_adjusted_max_temp <- max_temp %>% stl(s.window='periodic') %>% seasadj() 
+```
+
+``` r
+arima_max_temp <- auto.arima(seasonally_adjusted_max_temp)
+arima_max_temp
+```
+
+    ## Series: seasonally_adjusted_max_temp 
+    ## ARIMA(3,1,2) 
     ## 
     ## Coefficients:
-    ##          ar1      ar2     ar3      ar4     ar5      ma1     ma2
-    ##       1.3381  -0.6457  0.1785  -0.0374  0.0114  -1.4619  0.4723
-    ## s.e.  0.1189   0.1019  0.0293   0.0119  0.0057   0.1188  0.1161
+    ##          ar1      ar2     ar3      ma1     ma2
+    ##       1.3419  -0.6328  0.1624  -1.4760  0.4827
+    ## s.e.  0.0623   0.0503  0.0089   0.0631  0.0616
     ## 
-    ## sigma^2 = 13.99:  log likelihood = -93934.25
-    ## AIC=187884.5   AICc=187884.5   BIC=187952
+    ## sigma^2 = 13.14:  log likelihood = -92862.12
+    ## AIC=185736.2   AICc=185736.2   BIC=185786.9
 
 ``` r
-fit %>% forecast(h=12) %>% autoplot()
+arima_max_temp %>% forecast(h=2400) %>% autoplot()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-115-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-72-1.png)<!-- -->
 
 ``` r
-autoplot(fit)
+autoplot(cpt.meanvar(seasonally_adjusted_max_temp), cpt.colour = 'blue', cpt.linetype = 'solid')
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-115-2.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-73-1.png)<!-- -->
 
 ``` r
-length(eeadj)
+min_temp_df <- kelvin.to.fahrenheit(as.data.frame(seasonally_adjusted_min_temp))
+max_temp_df <- kelvin.to.fahrenheit(as.data.frame(seasonally_adjusted_max_temp))
+ggplot(data=min_temp_df, aes(y=x, x=seq(1, length(x)))) + 
+  geom_line(data=min_temp_df, color=our_purple) +
+  geom_line(data=max_temp_df, color=our_purple) +
+  geom_smooth(data=min_temp_df,color=our_yellow, alpha=1) +
+  geom_smooth(data=max_temp_df,color=our_yellow, alpha=1) +
+  theme_tufte() +
+  
+  geom_hline(yintercept=114)+
+  geom_hline(yintercept=32) + 
+  ylab("temperature (F)")
 ```
 
-    ## [1] 34310
-
-``` r
- interval <- unclass(fit$tsp$interval)
-    interval <- Filter(function(x) x!=0, interval)
-
-eeadj %>%
-  Arima( order=c(5,1,2)) %>%
-  forecast() %>%
-  autoplot() +
-    ylab("min temp") + xlab("Year")
-```
-
-![](Haskell_files/figure-gfm/unnamed-chunk-116-1.png)<!-- -->
-
-``` r
-ggplot(data= df_min_temp, aes(x = dates, y = value)) + 
-  geom_smooth(color=our_purple) +
-  theme_tufte()
-```
-
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-
-![](Haskell_files/figure-gfm/unnamed-chunk-117-1.png)<!-- --> \####
-Maximum temperature
+![](Haskell_files/figure-gfm/unnamed-chunk-74-1.png)<!-- -->
 
 ### Relative Humidity
 
@@ -986,7 +1111,7 @@ all_climate_projections_RH <- ggplot(data= df_RH, aes(x = time, y = value, color
 all_climate_projections_RH
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-119-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-76-1.png)<!-- -->
 
 #### Minimum RH
 
@@ -1031,7 +1156,7 @@ all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )
 all_climate_projections_RH
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-123-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-80-1.png)<!-- -->
 
 ``` r
 precip_ts <- ts(df_precip[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
@@ -1039,7 +1164,7 @@ decomp_precip <- decompose(precip_ts)
 plot(decomp_precip, col=our_purple)
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-124-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-81-1.png)<!-- -->
 
 ``` r
 all_climate_projections <- ggplot(data= df_precip, aes(x = dates, y = value, color = variable)) + 
@@ -1049,50 +1174,50 @@ all_climate_projections <- ggplot(data= df_precip, aes(x = dates, y = value, col
 all_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-125-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-82-1.png)<!-- -->
 
 ``` r
 plot.ts(decomp_precip$trend, col=our_purple)
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-126-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-83-1.png)<!-- -->
 
 ``` r
 autoplot(spec.ar(precip_ts, plot = FALSE))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-127-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-84-1.png)<!-- -->
 
 ``` r
 autoplot(stl(precip_ts, s.window = 'periodic'), ts.colour = our_purple)
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-128-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-85-1.png)<!-- -->
 
 ``` r
 autoplot(acf(precip_ts, plot = FALSE))
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-129-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-86-1.png)<!-- -->
 
 ``` r
 autoplot(acf(precip_ts, plot = FALSE), conf.int.fill = '#0000FF', conf.int.value = 0.8, conf.int.type = 'ma')
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-130-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-87-1.png)<!-- -->
 
 ``` r
 precip_ts %>% stl(s.window='periodic') %>% seasadj() -> eeadj
 autoplot(eeadj)
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-131-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-88-1.png)<!-- -->
 
 ``` r
 eeadj %>% diff() %>% ggtsdisplay(main="")
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-132-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-89-1.png)<!-- -->
 
 ``` r
 auto.arima(eeadj)
@@ -1131,7 +1256,7 @@ auto.arima(eeadj)
 checkresiduals(fit)
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-134-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-91-1.png)<!-- -->
 
     ## 
     ##  Ljung-Box test
@@ -1145,13 +1270,13 @@ checkresiduals(fit)
 fit %>% forecast(h=12) %>% autoplot()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-135-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-92-1.png)<!-- -->
 
 ``` r
 autoplot(fit)
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-135-2.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-92-2.png)<!-- -->
 
 ``` r
 length(eeadj)
@@ -1170,7 +1295,7 @@ eeadj %>%
     ylab("min temp") + xlab("Year")
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-136-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-93-1.png)<!-- -->
 
 ``` r
 df_precip_2 <- df_precip[which(df_precip$value != 0),]
@@ -1184,7 +1309,7 @@ ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = dates, y = val
 ensemble_climate_projections
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-137-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-94-1.png)<!-- -->
 
 ``` r
 ggplot(data= df_precip, aes(x = dates, y = value)) + 
@@ -1192,7 +1317,7 @@ ggplot(data= df_precip, aes(x = dates, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-137-2.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-94-2.png)<!-- -->
 
 ``` r
 df_precip_quant_95 <- df_precip %>% 
@@ -1242,4 +1367,4 @@ ggplot(data= df_precip, aes(x = dates, y = value)) +
   theme_tufte()
 ```
 
-![](Haskell_files/figure-gfm/unnamed-chunk-139-1.png)<!-- -->
+![](Haskell_files/figure-gfm/unnamed-chunk-96-1.png)<!-- -->

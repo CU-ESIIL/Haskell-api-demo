@@ -393,14 +393,16 @@ University}}{Climate futures for Haskell Indian Nations University}}\label{clima
 \FunctionTok{library}\NormalTok{(ggpattern)}
 \FunctionTok{library}\NormalTok{(magick)}
 \FunctionTok{library}\NormalTok{(future)}
+\FunctionTok{library}\NormalTok{(forecast)}
 \FunctionTok{library}\NormalTok{(tidytable)}
 \FunctionTok{library}\NormalTok{(janitor)}
 \FunctionTok{options}\NormalTok{(}\AttributeTok{timeout =} \DecValTok{600}\NormalTok{)}
 \FunctionTok{library}\NormalTok{(ggfortify)}
-\FunctionTok{library}\NormalTok{(forecast)}
 \FunctionTok{library}\NormalTok{(reticulate)}
 \FunctionTok{library}\NormalTok{(osmdata)}
 \FunctionTok{library}\NormalTok{(osmextract)}
+\FunctionTok{library}\NormalTok{(changepoint)}
+\FunctionTok{library}\NormalTok{(weathermetrics)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -429,7 +431,7 @@ University}}{Climate futures for Haskell Indian Nations University}}\label{clima
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{seamless\_image\_filenames }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
-  \StringTok{\textquotesingle{}Haskell\_logo copy.png\textquotesingle{}}
+  \StringTok{\textquotesingle{}Haskell\_logo.png\textquotesingle{}}
 \NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
@@ -1020,29 +1022,6 @@ of those dimensions.
 \end{Highlighting}
 \end{Shaded}
 
-\begin{verbatim}
-## Trying to connect to the USGS.gov API
-\end{verbatim}
-
-\begin{verbatim}
-## not a file: 
-## ' https://cida.usgs.gov/thredds/dodsC/macav2metdata_daily_future '
-## 
-## ... attempting remote connection
-\end{verbatim}
-
-\begin{verbatim}
-## Connection succeeded.
-\end{verbatim}
-
-\begin{verbatim}
-## Reading results
-\end{verbatim}
-
-\begin{verbatim}
-## Converting into an R data.table
-\end{verbatim}
-
 Element 1. Dataframe of availble data and descriptions of each of those
 variables.
 
@@ -1243,6 +1222,19 @@ experiment with different downstream analyes.
 \hypertarget{organize-climate-data}{%
 \subsection{Organize climate data}\label{organize-climate-data}}
 
+Our requested climate data are returned from the api server as two data
+frames. The first data frame is the columns of data that are indexed by
+a time reference number and the second, which is the list translations
+from time reference number to actual time. We will join those tables
+here to make those data easier to work with. Once joined, we convert the
+time labels from characters to POSIX. POSIX is a special way of handling
+time and date data in R. We reorder the columns so that the POSIX data
+is in the first column. This will make it easy to later create a time
+series object (ts) that can go into our statistical and forecasting
+functions. Finally, we print the column names of the final transformed
+data frame to verify that we have time data in the first column and all
+the requested data as columns after that.
+
 \hypertarget{join-data-with-dates}{%
 \subsubsection{Join data with dates}\label{join-data-with-dates}}
 
@@ -1324,11 +1316,39 @@ experiment with different downstream analyes.
 ## [93] "geometry"
 \end{verbatim}
 
+We imported temperature data, humidity data, and precipitation data.
+Each of these are handled and modeled in a slightly different way. Here,
+we'll work through those three data types in sequence and try to draw
+inference from synthesizing those three pieces of information.
+
 \hypertarget{temperature}{%
 \subsubsection{Temperature}\label{temperature}}
 
+Temperature is the most talked-about component of climate. It's a great
+indicator of the weather overall, it's a direct output of climate
+models, and it's a defining characteristic of ecological niches.
+
 \hypertarget{minimum-temperature}{%
 \paragraph{Minimum temperature}\label{minimum-temperature}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Organize data The climate data we are importing are `downscaled' from
+  much larger and more complex models. This process of downscaling
+  summarized that more complicated model. This means that we don't need
+  to calculate our own summary statistics (e.g.~mean, minimum, or
+  maximum) because we download those summary statistics instead of the
+  raw data. We start by filtering our full downloaded data set and
+  create a new data set with only minimum temperatures in it. We ordered
+  one scenario from 18 different climate modeling agencies so, our
+  filtered data set should be 18 columns of data plus geography and time
+  tags. We then use the gather() function to reorganize that table so
+  that we have three columns: dates, variable, and value. This
+  reorganization makes the data easy to convert into a time series (ts)
+  object for later analysis and visualization.
+\end{enumerate}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1340,28 +1360,30 @@ experiment with different downstream analyes.
 \NormalTok{df\_min\_temp }\OtherTok{\textless{}{-}}\NormalTok{ df\_min\_temp[}\FunctionTok{which}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{value }\SpecialCharTok{\textgreater{}} \DecValTok{200}\NormalTok{), ]}
 \NormalTok{df\_min\_temp}\SpecialCharTok{$}\NormalTok{variable }\OtherTok{\textless{}{-}} \FunctionTok{as.character}\NormalTok{(}\FunctionTok{as.numeric}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{variable)))}
 
-\CommentTok{\#df\_min\_temp\_TS \textless{}{-} as.xts(df\_min\_temp)}
-\FunctionTok{head}\NormalTok{(df\_min\_temp)}
+\FunctionTok{colnames}\NormalTok{(df\_min\_temp)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-##        dates variable value
-## 1 2006-01-01        2 273.9
-## 2 2006-01-02        2 280.6
-## 3 2006-01-03        2 280.9
-## 4 2006-01-04        2 284.3
-## 5 2006-01-05        2 290.5
-## 6 2006-01-06        2 291.0
+## [1] "dates"    "variable" "value"
 \end{verbatim}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Plot data If we plot our filtered minimum temperature data, we see a
+  chaotic mess because all 18 models are represented on the same graph.
+  We probably want to consider all of the models together.
+\end{enumerate}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{all\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+} 
+\NormalTok{all\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value, }\AttributeTok{color =}\NormalTok{ variable)) }\SpecialCharTok{+}
   \FunctionTok{geom\_line}\NormalTok{()}\SpecialCharTok{+}
   \FunctionTok{geom\_smooth}\NormalTok{() }\SpecialCharTok{+}
   \FunctionTok{scale\_colour\_viridis\_d}\NormalTok{(}\AttributeTok{option=}\StringTok{"A"}\NormalTok{)}
-  
 
 \NormalTok{all\_climate\_projections}
 \end{Highlighting}
@@ -1369,13 +1391,36 @@ experiment with different downstream analyes.
 
 \includegraphics{Haskell_files/figure-latex/unnamed-chunk-50-1.pdf}
 
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  Plot as ensemble and fit a general additive model (GAM) to those data
+  If we plot those same data again without the model distinction, we see
+  the ensemble of all 18 climate models. These data were standardized
+  during downscaling, so they are directly comparable now without any
+  more fuss. Notice that these data are in Kelvin. You should alway
+  complet all of your analyses in Kelvin and only translate to Celsius
+  or Fahrenheit for final figures for a general audience. We apply a
+  general additive model to the data to see what the basic trend looks
+  like. It looks like we should expect a steady increasing in
+  temperature from 281K to 289K between now and 2099. This line doesn't
+  offer much refinement to our existing expectation. Visually, it sits
+  below an area of high data density and it doesn't help us explain any
+  of the season variation we see in the data. This fit makes us want
+  something better.
+\end{enumerate}
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ensemble\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
+\NormalTok{ensemble\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =} \FunctionTok{kelvin.to.fahrenheit}\NormalTok{(value))) }\SpecialCharTok{+} 
   \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
-  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_yellow) }\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
-  
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_yellow) }\SpecialCharTok{+} \CommentTok{\#This applies a GAM (general additive model) to the data to find a trend line. }
+  \FunctionTok{theme\_tufte}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{32}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{87}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{105}\NormalTok{)}
 
 \NormalTok{ensemble\_climate\_projections}
 \end{Highlighting}
@@ -1383,190 +1428,178 @@ experiment with different downstream analyes.
 
 \includegraphics{Haskell_files/figure-latex/unnamed-chunk-51-1.pdf}
 
+Number of days below freezing. Each generation will have one less month
+of freeze.
+
+Highest daily low. Each generation experiences an additional 10 days per
+year with a daily low above 87 degrees F. Three generations see a lot of
+change. for those trying to accomplish 8 generation planning, modern
+science can only project less than half way there.
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{library}\NormalTok{(stats)}
-\NormalTok{convert.fft }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(cs, }\AttributeTok{sample.rate=}\DecValTok{1}\NormalTok{) \{}
-\NormalTok{  cs }\OtherTok{\textless{}{-}}\NormalTok{ cs }\SpecialCharTok{/} \FunctionTok{length}\NormalTok{(cs) }\CommentTok{\# normalize}
+\NormalTok{df\_min\_temp\_F }\OtherTok{\textless{}{-}}\NormalTok{ df\_min\_temp}
+\NormalTok{df\_min\_temp\_F}\SpecialCharTok{$}\NormalTok{value }\OtherTok{\textless{}{-}} \FunctionTok{kelvin.to.fahrenheit}\NormalTok{(df\_min\_temp\_F}\SpecialCharTok{$}\NormalTok{value)}
+\NormalTok{df\_min\_temp\_F}\SpecialCharTok{$}\NormalTok{dates }\OtherTok{\textless{}{-}} \FunctionTok{format}\NormalTok{(df\_min\_temp\_F}\SpecialCharTok{$}\NormalTok{dates, }\AttributeTok{format =} \StringTok{"\%Y"}\NormalTok{)}
 
-\NormalTok{  distance.center }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(c)}\FunctionTok{signif}\NormalTok{( }\FunctionTok{Mod}\NormalTok{(c),        }\DecValTok{4}\NormalTok{)}
-\NormalTok{  angle           }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(c)}\FunctionTok{signif}\NormalTok{( }\DecValTok{180}\SpecialCharTok{*}\FunctionTok{Arg}\NormalTok{(c)}\SpecialCharTok{/}\NormalTok{pi, }\DecValTok{3}\NormalTok{)}
-  
-\NormalTok{  df }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{cycle    =} \DecValTok{0}\SpecialCharTok{:}\NormalTok{(}\FunctionTok{length}\NormalTok{(cs)}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{),}
-                   \AttributeTok{freq     =} \DecValTok{0}\SpecialCharTok{:}\NormalTok{(}\FunctionTok{length}\NormalTok{(cs)}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{) }\SpecialCharTok{*}\NormalTok{ sample.rate }\SpecialCharTok{/} \FunctionTok{length}\NormalTok{(cs),}
-                   \AttributeTok{strength =} \FunctionTok{sapply}\NormalTok{(cs, distance.center),}
-                   \AttributeTok{delay    =} \FunctionTok{sapply}\NormalTok{(cs, angle))}
-\NormalTok{  df}
-\NormalTok{\}}
+\NormalTok{below\_freezing }\OtherTok{\textless{}{-}}\NormalTok{ df\_min\_temp\_F }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(value }\SpecialCharTok{\textless{}=}\DecValTok{32}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(dates)}\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{cold\_counts =} \FunctionTok{n}\NormalTok{()}\SpecialCharTok{/}\DecValTok{18}\NormalTok{)}
 
-\NormalTok{fft\_out  }\OtherTok{\textless{}{-}} \FunctionTok{convert.fft}\NormalTok{(}\FunctionTok{fft}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{value))}
-\FunctionTok{head}\NormalTok{(fft\_out)}
+\NormalTok{high\_lows }\OtherTok{\textless{}{-}}\NormalTok{ df\_min\_temp\_F }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(value }\SpecialCharTok{\textgreater{}=}\DecValTok{87}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(dates)}\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{high\_lows\_counts =} \FunctionTok{n}\NormalTok{()}\SpecialCharTok{/}\DecValTok{18}\NormalTok{)}
+
+\NormalTok{ scorching\_nights }\OtherTok{\textless{}{-}}\NormalTok{ df\_min\_temp\_F }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(value }\SpecialCharTok{\textgreater{}=}\DecValTok{105}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(dates)}\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{scorching\_nights\_counts =} \FunctionTok{n}\NormalTok{()}\SpecialCharTok{/}\DecValTok{18}\NormalTok{)}
+
+  \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data =}\NormalTok{ below\_freezing, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y=}\NormalTok{cold\_counts)) }\SpecialCharTok{+}
+           \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
+    \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{data =}\NormalTok{ high\_lows, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y=}\NormalTok{high\_lows\_counts),}\AttributeTok{color=}\NormalTok{our\_yellow)}\SpecialCharTok{+}
+    \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{data =}\NormalTok{ scorching\_nights, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y=}\NormalTok{scorching\_nights\_counts),}\AttributeTok{color=}\NormalTok{our\_blue)}\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{() }\SpecialCharTok{+}
+    \FunctionTok{ylim}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{100}\NormalTok{) }\SpecialCharTok{+} 
+    \FunctionTok{ylab}\NormalTok{(}\StringTok{"number of days"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{0}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{35}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{verbatim}
-##   cycle         freq strength  delay
-## 1     0 0.000000e+00 285.1000  0.000
-## 2     1 1.537281e-06   1.0160 10.700
-## 3     2 3.074563e-06   1.0860 -4.560
-## 4     3 4.611844e-06   0.9302  2.350
-## 5     4 6.149126e-06   1.1560 -1.210
-## 6     5 7.686407e-06   0.6849  0.778
-\end{verbatim}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-52-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{library}\NormalTok{(reticulate)}
-\NormalTok{x }\OtherTok{\textless{}{-}} \FunctionTok{r\_to\_py}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{time)}
-\NormalTok{ y }\OtherTok{\textless{}{-}} \FunctionTok{r\_to\_py}\NormalTok{(df\_min\_temp}\SpecialCharTok{$}\NormalTok{value)}
-\NormalTok{ minTemp }\OtherTok{\textless{}{-}} \FunctionTok{r\_to\_py}\NormalTok{(df\_min\_temp[,}\FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{,}\DecValTok{3}\NormalTok{)])}
+\NormalTok{min\_temp }\OtherTok{\textless{}{-}} \FunctionTok{ts}\NormalTok{(df\_min\_temp[,}\DecValTok{3}\NormalTok{], }\AttributeTok{frequency =} \DecValTok{365}\NormalTok{, }\AttributeTok{start =} \FunctionTok{c}\NormalTok{(}\DecValTok{2006}\NormalTok{, }\DecValTok{1}\NormalTok{), }\AttributeTok{end =} \FunctionTok{c}\NormalTok{(}\DecValTok{2099}\NormalTok{,}\DecValTok{365}\NormalTok{))}
 \end{Highlighting}
 \end{Shaded}
 
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  Decompose the time series using fourier analysis. Fourier analyses are
+  a convenient way to decompose repeating waves and are a mainstay of
+  time series analyses. The analysis presented here finds the seasonal
+  harmonic in the data and subtracts that harmonic from the data to show
+  the difference between trend and noise. We start by converting our
+  data into a ts object and passes that ts object to the decompose()
+  function. When we plot that deconstruction, we see that the resultant
+  trend line is much more nuanced than our previous fit.
+\end{enumerate}
+
+Here is the GAM fit
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\ImportTok{import}\NormalTok{ numpy }\ImportTok{as}\NormalTok{ np}
-\ImportTok{import}\NormalTok{ matplotlib.pyplot }\ImportTok{as}\NormalTok{ plt}
- 
-\NormalTok{x }\OperatorTok{=} \BuiltInTok{list}\NormalTok{(}\BuiltInTok{range}\NormalTok{(}\BuiltInTok{len}\NormalTok{(r.x)))}
-\NormalTok{y }\OperatorTok{=}\NormalTok{ r.y}
-
-\CommentTok{\# apply fast fourier transform and take absolute values}
-\NormalTok{f}\OperatorTok{=}\BuiltInTok{abs}\NormalTok{(np.fft.fft(r.y))}
-
-\CommentTok{\# get the list of frequencies}
-\NormalTok{num}\OperatorTok{=}\NormalTok{np.size(x)}
-\NormalTok{freq }\OperatorTok{=}\NormalTok{ [i }\OperatorTok{/}\NormalTok{ num }\ControlFlowTok{for}\NormalTok{ i }\KeywordTok{in} \BuiltInTok{list}\NormalTok{(}\BuiltInTok{range}\NormalTok{(num))]}
-
-\CommentTok{\# get the list of spectrums}
-\NormalTok{spectrum}\OperatorTok{=}\NormalTok{f.real}\OperatorTok{*}\NormalTok{f.real}\OperatorTok{+}\NormalTok{f.imag}\OperatorTok{*}\NormalTok{f.imag}
-\NormalTok{nspectrum}\OperatorTok{=}\NormalTok{spectrum}\OperatorTok{/}\NormalTok{spectrum[}\DecValTok{0}\NormalTok{]}
-
-
-\NormalTok{plt.clf()}
-\CommentTok{\# plot nspectrum per frequency, with a semilog scale on nspectrum}
-\NormalTok{plt.semilogy(freq,nspectrum)}
-
-
-\NormalTok{plt.show()}
+\NormalTok{min\_temp }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{decompose}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{autoplot}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{theme\_tufte}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-54-1.pdf}
+
+We can also use a different decompositions model, here the STL model,
+which is a loess model for time series data. The STL
+
+Here is the loess fit
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{\# improve the plot by adding periods in number of weeks rather than  frequency}
-\ImportTok{import}\NormalTok{ pandas }\ImportTok{as}\NormalTok{ pd}
-\NormalTok{results }\OperatorTok{=}\NormalTok{ pd.DataFrame(\{}\StringTok{\textquotesingle{}freq\textquotesingle{}}\NormalTok{: freq, }\StringTok{\textquotesingle{}nspectrum\textquotesingle{}}\NormalTok{: nspectrum\})}
-\NormalTok{results[}\StringTok{\textquotesingle{}period\textquotesingle{}}\NormalTok{] }\OperatorTok{=}\NormalTok{ results[}\StringTok{\textquotesingle{}freq\textquotesingle{}}\NormalTok{] }\OperatorTok{/}\NormalTok{ (}\DecValTok{1}\OperatorTok{/}\DecValTok{52}\NormalTok{)}
-
-\NormalTok{plt.clf()}
-\NormalTok{plt.semilogy(results[}\StringTok{\textquotesingle{}period\textquotesingle{}}\NormalTok{], results[}\StringTok{\textquotesingle{}nspectrum\textquotesingle{}}\NormalTok{])}
-\NormalTok{plt.show()}
+\NormalTok{min\_temp }\SpecialCharTok{\%\textgreater{}\%}
+ \FunctionTok{stl}\NormalTok{(}\AttributeTok{s.window =} \StringTok{"periodic"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{autoplot}\NormalTok{() }\SpecialCharTok{+} \FunctionTok{theme\_tufte}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-55-1.pdf}
+\#\#\#\# Estimate Spectral Density of a Time Series This is the fourier
+spectral breakdown for the decomposition. You can see the strong first
+harmonic that is easy to pull out and makes the decomposition of this
+data go relatively fast for this size of dataset.
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{\# improve the plot by converting the data into grouped per week to avoid peaks}
-\NormalTok{results[}\StringTok{\textquotesingle{}period\_round\textquotesingle{}}\NormalTok{] }\OperatorTok{=}\NormalTok{ results[}\StringTok{\textquotesingle{}period\textquotesingle{}}\NormalTok{].}\BuiltInTok{round}\NormalTok{()}
-\NormalTok{grouped\_week }\OperatorTok{=}\NormalTok{ results.groupby(}\StringTok{\textquotesingle{}period\_round\textquotesingle{}}\NormalTok{)[}\StringTok{\textquotesingle{}nspectrum\textquotesingle{}}\NormalTok{].}\BuiltInTok{sum}\NormalTok{()}
-
-\NormalTok{plt.clf()}
-\NormalTok{plt.semilogy(grouped\_week.index, grouped\_week)}
-\NormalTok{plt.xticks([}\DecValTok{1}\NormalTok{, }\DecValTok{13}\NormalTok{, }\DecValTok{26}\NormalTok{, }\DecValTok{39}\NormalTok{, }\DecValTok{52}\NormalTok{])}
-\NormalTok{plt.show()}
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{spec.ar}\NormalTok{(min\_temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}\SpecialCharTok{+} \FunctionTok{theme\_tufte}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-56-1.pdf}
+
+\hypertarget{verify-that-our-use-of-an-additive-model-was-appropriate.}{%
+\paragraph{Verify that our use of an additive model was
+appropriate.}\label{verify-that-our-use-of-an-additive-model-was-appropriate.}}
+
+Time series can come in a couple different flavors. The two that are
+common in decomposition analyses are additive and multiplicative
+harmonics. We made the assumption that temperature increase was additive
+and we can validate that assumption here with an autocorrelation
+function (ACF), which is the coefficient of correlation between two
+values in a time series. The results show the gradual decline of ACF
+along the time series. This is the result of our one-step-ahead climate
+predictions that use the previous year to predict the next year. this
+means that there is strong correlation between adjoining years, but that
+the correlation degrades in one direction from no into the future. You
+see that years in the near future are tightly coupled with each other
+but that covariance degrades over time so we have less confidence in the
+end of the time series than we do about the beginning. A multiplicative
+relationship would inflate rapidly over time and show an exponential
+relationship here. You might expect multiplicative relationships with
+time series of demographic growth, stock trends, or social media `likes'
+because those all present mechanisms that can multiply rather than add.
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{temp }\OtherTok{\textless{}{-}} \FunctionTok{ts}\NormalTok{(df\_min\_temp[,}\DecValTok{3}\NormalTok{], }\AttributeTok{frequency =} \DecValTok{365}\NormalTok{, }\AttributeTok{start =} \FunctionTok{c}\NormalTok{(}\DecValTok{2006}\NormalTok{, }\DecValTok{1}\NormalTok{), }\AttributeTok{end =} \FunctionTok{c}\NormalTok{(}\DecValTok{2099}\NormalTok{,}\DecValTok{365}\NormalTok{))}
-\NormalTok{decomp\_temp }\OtherTok{\textless{}{-}} \FunctionTok{decompose}\NormalTok{(temp)}
-\FunctionTok{plot}\NormalTok{(decomp\_temp, }\AttributeTok{col=}\NormalTok{our\_purple)}
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{acf}\NormalTok{(min\_temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}\SpecialCharTok{+} \FunctionTok{theme\_tufte}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
 \includegraphics{Haskell_files/figure-latex/unnamed-chunk-57-1.pdf}
 
+\hypertarget{forecast-models}{%
+\paragraph{Forecast models}\label{forecast-models}}
+
+We need to make an important distinctions between the different types of
+forecasting happening in this analysis. Our climate data are forecast
+into the future using global mechanistic models simulating the collision
+of air molecules and the accumulation of gasses that change climate and
+weather patterns over decades. Those models produce the data we download
+and use as raw data to describe our local future. The forecasting we're
+about to do, we're looking for statistical trends contained within that
+data. There is no natural or environmental mechanism in this
+forecasting. The arima forecast is a statistical forecasting method that
+fits a model to the data using the same decomposition method we
+described above (GAN) and then calculates an acceptable forecast window
+based on the predictability of the trend relative to the data.
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(akl\_daily, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ max\_temp, }\AttributeTok{y =}\NormalTok{ month, }\AttributeTok{height =}\NormalTok{ ..density..)) }\SpecialCharTok{+}
-  \FunctionTok{geom\_density\_ridges}\NormalTok{(}\AttributeTok{stat =} \StringTok{"density"}\NormalTok{)}
+\NormalTok{seasonally\_adjusted\_min\_temp }\OtherTok{\textless{}{-}}\NormalTok{ min\_temp }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{stl}\NormalTok{(}\AttributeTok{s.window=}\StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{seasadj}\NormalTok{() }
+\NormalTok{min\_plot }\OtherTok{\textless{}{-}} \FunctionTok{autoplot}\NormalTok{(seasonally\_adjusted\_min\_temp) }
+\CommentTok{\#+ }
+ \CommentTok{\# theme\_tufte() + }
+  \CommentTok{\#geom\_smooth(col=our\_yellow)}
+
+\NormalTok{min\_plot}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{library}\NormalTok{(ggfortify)}
-\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{stl}\NormalTok{(temp, }\AttributeTok{s.window =} \StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{), }\AttributeTok{ts.colour =}\NormalTok{ our\_purple)}
-\end{Highlighting}
-\end{Shaded}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-58-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{acf}\NormalTok{(temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-61-1.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{acf}\NormalTok{(temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{), }\AttributeTok{conf.int.fill =} \StringTok{\textquotesingle{}\#0000FF\textquotesingle{}}\NormalTok{, }\AttributeTok{conf.int.value =} \FloatTok{0.8}\NormalTok{, }\AttributeTok{conf.int.type =} \StringTok{\textquotesingle{}ma\textquotesingle{}}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-62-1.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{spec.ar}\NormalTok{(temp, }\AttributeTok{plot =} \ConstantTok{FALSE}\NormalTok{))}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-63-1.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{library}\NormalTok{(forecast)}
-\FunctionTok{ggtsdiag}\NormalTok{(}\FunctionTok{auto.arima}\NormalTok{(temp))}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{ggout }\OtherTok{\textless{}{-}} \FunctionTok{ggfreqplot}\NormalTok{(temp, }\AttributeTok{freq=}\DecValTok{100}\NormalTok{) }\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{() }
-\FunctionTok{ggsave}\NormalTok{(ggout, }\AttributeTok{filename =} \StringTok{"freqplot.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{11}\NormalTok{, }\AttributeTok{height =} \FloatTok{8.5}\NormalTok{, }\AttributeTok{unit=}\StringTok{"in"}\NormalTok{, }\AttributeTok{dpi=}\DecValTok{600}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{library}\NormalTok{(forecast)}
-\NormalTok{temp }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{stl}\NormalTok{(}\AttributeTok{s.window=}\StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{seasadj}\NormalTok{() }\OtherTok{{-}\textgreater{}}\NormalTok{ eeadj}
-\FunctionTok{autoplot}\NormalTok{(eeadj)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-66-1.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{eeadj }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{diff}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{ggtsdisplay}\NormalTok{(}\AttributeTok{main=}\StringTok{""}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-67-1.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{(fit }\OtherTok{\textless{}{-}} \FunctionTok{Arima}\NormalTok{(eeadj, }\AttributeTok{order=}\FunctionTok{c}\NormalTok{(}\DecValTok{5}\NormalTok{,}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{)))}
+\NormalTok{arima\_min\_temp }\OtherTok{\textless{}{-}} \FunctionTok{auto.arima}\NormalTok{(seasonally\_adjusted\_min\_temp)}
+\NormalTok{arima\_min\_temp}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## Series: eeadj 
+## Series: seasonally_adjusted_min_temp 
 ## ARIMA(5,1,2) 
 ## 
 ## Coefficients:
@@ -1580,14 +1613,20 @@ experiment with different downstream analyes.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{\#(fit \textless{}{-} Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),}
-\CommentTok{\#  lambda=0))}
-
-\FunctionTok{checkresiduals}\NormalTok{(fit)}
+\NormalTok{bullseye }\OtherTok{\textless{}{-}} \FunctionTok{autoplot}\NormalTok{(arima\_min\_temp) }
+\NormalTok{bullseye}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-68-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-60-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{checkresiduals}\NormalTok{(arima\_min\_temp)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-61-1.pdf}
 
 \begin{verbatim}
 ## 
@@ -1601,59 +1640,131 @@ experiment with different downstream analyes.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{auto.arima}\NormalTok{(eeadj)}
+\NormalTok{seasonally\_adjusted\_min\_temp }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{diff}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{ggtsdisplay}\NormalTok{(}\AttributeTok{main=}\StringTok{""}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{theme\_tufte}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-62-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-62-2.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{cpt.meanvar}\NormalTok{(seasonally\_adjusted\_min\_temp), }\AttributeTok{cpt.colour =} \StringTok{\textquotesingle{}blue\textquotesingle{}}\NormalTok{, }\AttributeTok{cpt.linetype =} \StringTok{\textquotesingle{}solid\textquotesingle{}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-63-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{arima\_min\_temp }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{forecast}\NormalTok{(}\AttributeTok{h=}\DecValTok{2400}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{autoplot}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-64-1.pdf}
+
+\hypertarget{maximum-temperature}{%
+\paragraph{Maximum temperature}\label{maximum-temperature}}
+
+The cyverse folks join us from Arizona will think thi
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_max\_temp }\OtherTok{\textless{}{-}}\NormalTok{ haskell\_posix }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{st\_drop\_geometry}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(dates, dates,  }\FunctionTok{which}\NormalTok{(}\FunctionTok{startsWith}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(haskell), }\StringTok{"tasmax"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{gather}\NormalTok{(}\AttributeTok{key =} \StringTok{"variable"}\NormalTok{, }\AttributeTok{value =} \StringTok{"value"}\NormalTok{, }\SpecialCharTok{{-}}\NormalTok{dates)}
+
+\NormalTok{df\_max\_temp }\OtherTok{\textless{}{-}}\NormalTok{ df\_max\_temp[}\FunctionTok{which}\NormalTok{(df\_max\_temp}\SpecialCharTok{$}\NormalTok{value }\SpecialCharTok{\textgreater{}} \DecValTok{200}\NormalTok{), ]}
+\NormalTok{df\_max\_temp}\SpecialCharTok{$}\NormalTok{variable }\OtherTok{\textless{}{-}} \FunctionTok{as.character}\NormalTok{(}\FunctionTok{as.numeric}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(df\_max\_temp}\SpecialCharTok{$}\NormalTok{variable)))}
+
+\CommentTok{\#df\_min\_temp\_TS \textless{}{-} as.xts(df\_min\_temp)}
+\FunctionTok{colnames}\NormalTok{(df\_max\_temp)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## Series: eeadj 
-## ARIMA(5,1,2) 
+## [1] "dates"    "variable" "value"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ensemble\_climate\_projections }\OtherTok{\textless{}{-}} \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_max\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =} \FunctionTok{kelvin.to.fahrenheit}\NormalTok{(value))) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_yellow) }\SpecialCharTok{+} \CommentTok{\#This applies a GAM (general additive model) to the data to find a trend line. }
+  \FunctionTok{theme\_tufte}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{114}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{32}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{ylab}\NormalTok{(}\StringTok{"temperature (F)"}\NormalTok{)}
+
+\NormalTok{ensemble\_climate\_projections}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-66-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df\_max\_temp\_F }\OtherTok{\textless{}{-}}\NormalTok{ df\_max\_temp}
+\NormalTok{df\_max\_temp\_F}\SpecialCharTok{$}\NormalTok{value }\OtherTok{\textless{}{-}} \FunctionTok{kelvin.to.fahrenheit}\NormalTok{(df\_max\_temp\_F}\SpecialCharTok{$}\NormalTok{value)}
+\NormalTok{df\_max\_temp\_F}\SpecialCharTok{$}\NormalTok{dates }\OtherTok{\textless{}{-}} \FunctionTok{format}\NormalTok{(df\_max\_temp\_F}\SpecialCharTok{$}\NormalTok{dates, }\AttributeTok{format =} \StringTok{"\%Y"}\NormalTok{)}
+
+\NormalTok{beyond\_max\_temp }\OtherTok{\textless{}{-}}\NormalTok{ df\_max\_temp\_F }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(value }\SpecialCharTok{\textgreater{}=}\DecValTok{114}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(dates)}\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{beyond\_max =} \FunctionTok{n}\NormalTok{()}\SpecialCharTok{/}\DecValTok{18}\NormalTok{)}
+
+\NormalTok{max\_below\_freezing }\OtherTok{\textless{}{-}}\NormalTok{ df\_max\_temp\_F }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(value }\SpecialCharTok{\textless{}=}\DecValTok{32}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(dates)}\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{below\_freezing =} \FunctionTok{n}\NormalTok{()}\SpecialCharTok{/}\DecValTok{18}\NormalTok{)}
+
+  \FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data =}\NormalTok{ beyond\_max\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y=}\NormalTok{beyond\_max)) }\SpecialCharTok{+}
+           \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple)}\SpecialCharTok{+}
+    \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{data =}\NormalTok{ max\_below\_freezing, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y=}\NormalTok{below\_freezing), }\AttributeTok{color=}\NormalTok{our\_yellow)}\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{() }\SpecialCharTok{+}
+    \FunctionTok{ylim}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{15}\NormalTok{) }\SpecialCharTok{+}
+    \FunctionTok{ylab}\NormalTok{(}\StringTok{"number of days"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-67-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{max\_temp }\OtherTok{\textless{}{-}} \FunctionTok{ts}\NormalTok{(df\_max\_temp[,}\DecValTok{3}\NormalTok{], }\AttributeTok{frequency =} \DecValTok{365}\NormalTok{, }\AttributeTok{start =} \FunctionTok{c}\NormalTok{(}\DecValTok{2006}\NormalTok{, }\DecValTok{1}\NormalTok{), }\AttributeTok{end =} \FunctionTok{c}\NormalTok{(}\DecValTok{2099}\NormalTok{,}\DecValTok{365}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{seasonally\_adjusted\_max\_temp }\OtherTok{\textless{}{-}}\NormalTok{ max\_temp }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{stl}\NormalTok{(}\AttributeTok{s.window=}\StringTok{\textquotesingle{}periodic\textquotesingle{}}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{seasadj}\NormalTok{() }
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{arima\_max\_temp }\OtherTok{\textless{}{-}} \FunctionTok{auto.arima}\NormalTok{(seasonally\_adjusted\_max\_temp)}
+\NormalTok{arima\_max\_temp}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Series: seasonally_adjusted_max_temp 
+## ARIMA(3,1,2) 
 ## 
 ## Coefficients:
-##          ar1      ar2     ar3      ar4     ar5      ma1     ma2
-##       1.3381  -0.6457  0.1785  -0.0374  0.0114  -1.4619  0.4723
-## s.e.  0.1189   0.1019  0.0293   0.0119  0.0057   0.1188  0.1161
+##          ar1      ar2     ar3      ma1     ma2
+##       1.3419  -0.6328  0.1624  -1.4760  0.4827
+## s.e.  0.0623   0.0503  0.0089   0.0631  0.0616
 ## 
-## sigma^2 = 13.99:  log likelihood = -93934.25
-## AIC=187884.5   AICc=187884.5   BIC=187952
+## sigma^2 = 13.14:  log likelihood = -92862.12
+## AIC=185736.2   AICc=185736.2   BIC=185786.9
 \end{verbatim}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{fit }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{forecast}\NormalTok{(}\AttributeTok{h=}\DecValTok{12}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{autoplot}\NormalTok{()}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-70-1.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{autoplot}\NormalTok{(fit)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-70-2.pdf}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{length}\NormalTok{(eeadj)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## [1] 34310
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{ interval }\OtherTok{\textless{}{-}} \FunctionTok{unclass}\NormalTok{(fit}\SpecialCharTok{$}\NormalTok{tsp}\SpecialCharTok{$}\NormalTok{interval)}
-\NormalTok{    interval }\OtherTok{\textless{}{-}} \FunctionTok{Filter}\NormalTok{(}\ControlFlowTok{function}\NormalTok{(x) x}\SpecialCharTok{!=}\DecValTok{0}\NormalTok{, interval)}
-
-\NormalTok{eeadj }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{Arima}\NormalTok{( }\AttributeTok{order=}\FunctionTok{c}\NormalTok{(}\DecValTok{5}\NormalTok{,}\DecValTok{1}\NormalTok{,}\DecValTok{2}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{forecast}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{autoplot}\NormalTok{() }\SpecialCharTok{+}
-    \FunctionTok{ylab}\NormalTok{(}\StringTok{"min temp"}\NormalTok{) }\SpecialCharTok{+} \FunctionTok{xlab}\NormalTok{(}\StringTok{"Year"}\NormalTok{)}
+\NormalTok{arima\_max\_temp }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{forecast}\NormalTok{(}\AttributeTok{h=}\DecValTok{2400}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{autoplot}\NormalTok{()}
 \end{Highlighting}
 \end{Shaded}
 
@@ -1661,18 +1772,30 @@ experiment with different downstream analyes.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{ df\_min\_temp, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ dates, }\AttributeTok{y =}\NormalTok{ value)) }\SpecialCharTok{+} 
-  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
-  \FunctionTok{theme\_tufte}\NormalTok{()}
+\FunctionTok{autoplot}\NormalTok{(}\FunctionTok{cpt.meanvar}\NormalTok{(seasonally\_adjusted\_max\_temp), }\AttributeTok{cpt.colour =} \StringTok{\textquotesingle{}blue\textquotesingle{}}\NormalTok{, }\AttributeTok{cpt.linetype =} \StringTok{\textquotesingle{}solid\textquotesingle{}}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\begin{verbatim}
-## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
-\end{verbatim}
-
 \includegraphics{Haskell_files/figure-latex/unnamed-chunk-72-1.pdf}
-\#\#\#\# Maximum temperature
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{min\_temp\_df }\OtherTok{\textless{}{-}} \FunctionTok{kelvin.to.fahrenheit}\NormalTok{(}\FunctionTok{as.data.frame}\NormalTok{(seasonally\_adjusted\_min\_temp))}
+\NormalTok{max\_temp\_df }\OtherTok{\textless{}{-}} \FunctionTok{kelvin.to.fahrenheit}\NormalTok{(}\FunctionTok{as.data.frame}\NormalTok{(seasonally\_adjusted\_max\_temp))}
+\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data=}\NormalTok{min\_temp\_df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{y=}\NormalTok{x, }\AttributeTok{x=}\FunctionTok{seq}\NormalTok{(}\DecValTok{1}\NormalTok{, }\FunctionTok{length}\NormalTok{(x)))) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{data=}\NormalTok{min\_temp\_df, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{data=}\NormalTok{max\_temp\_df, }\AttributeTok{color=}\NormalTok{our\_purple) }\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{min\_temp\_df,}\AttributeTok{color=}\NormalTok{our\_yellow, }\AttributeTok{alpha=}\DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{data=}\NormalTok{max\_temp\_df,}\AttributeTok{color=}\NormalTok{our\_yellow, }\AttributeTok{alpha=}\DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_tufte}\NormalTok{() }\SpecialCharTok{+}
+  
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{114}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{geom\_hline}\NormalTok{(}\AttributeTok{yintercept=}\DecValTok{32}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{ylab}\NormalTok{(}\StringTok{"temperature (F)"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-73-1.pdf}
 
 \hypertarget{relative-humidity}{%
 \subsubsection{Relative Humidity}\label{relative-humidity}}
@@ -1701,7 +1824,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-74-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-75-1.pdf}
 
 \hypertarget{minimum-rh}{%
 \paragraph{Minimum RH}\label{minimum-rh}}
@@ -1788,7 +1911,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-78-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-79-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1798,7 +1921,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-79-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-80-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1810,7 +1933,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-80-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-81-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1818,7 +1941,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-81-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-82-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1826,7 +1949,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-82-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-83-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1834,7 +1957,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-83-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-84-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1842,7 +1965,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-84-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-85-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1850,7 +1973,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-85-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-86-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1859,7 +1982,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-86-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-87-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1867,7 +1990,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-87-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-88-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1916,7 +2039,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-89-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-90-1.pdf}
 
 \begin{verbatim}
 ## 
@@ -1934,7 +2057,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-90-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-91-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1942,7 +2065,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-90-2.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-91-2.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1967,7 +2090,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-91-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-92-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1983,7 +2106,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-92-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-93-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1993,7 +2116,7 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-92-2.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-93-2.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2047,6 +2170,6 @@ experiment with different downstream analyes.
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Haskell_files/figure-latex/unnamed-chunk-94-1.pdf}
+\includegraphics{Haskell_files/figure-latex/unnamed-chunk-95-1.pdf}
 
 \end{document}
