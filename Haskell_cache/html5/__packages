@@ -23,3 +23,6 @@ reticulate
 ggfortify
 forecast
 osmextract
+zoo
+changepoint
+weathermetrics

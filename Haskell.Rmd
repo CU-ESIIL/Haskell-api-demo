@@ -44,14 +44,16 @@ library(ggthemes)
 library(ggpattern)
 library(magick)
 library(future)
+library(forecast)
 library(tidytable)
 library(janitor)
 options(timeout = 600)
 library(ggfortify)
-library(forecast)
 library(reticulate)
 library(osmdata)
 library(osmextract)
+library(changepoint)
+library(weathermetrics)
 ```
 
 ```{r, eval=FALSE}
@@ -508,30 +510,30 @@ ggsave(grid_match, filename = "grid_match.png", height = 5, width=4,
 ### Mount to the downscaled dataset and transfer metadata. 
   We cannot download the entire dataset. Instead, we mount to that dataset by connecting to an api that route us to a particular part of the dataset based on the bounding box specified. 
    Mount to the USGS downscaled dataset. The resultant object called 'input' includes three elements The first is the full list of available data at each timestep. The second is a list of possible time steps. The third is a list of verbatim copy of the raw return from the server. This raw return shows the dimensions of the data and how many elements are available in each of those dimensions. 
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 # Mount to the USGS downscaled dataset. 
 inputs <- cft::available_data()
 ```
 
 Element 1. Dataframe of availble data and descriptions of each of those variables. 
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 head(inputs[[1]])
 ```
 
 Element 2. Short list of available data you can request
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 head(unique(inputs[[1]]$Variable))
 ```
 
 Element 3. Dataframe of available times
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 head(inputs[[2]])
 tail(inputs[[2]])
 ```
 
 ### Decide which Variables, Scenarios, and Models you want to request
 Your data order needs to include three things: Variable, Scenario, and Model. Your options can be found in the input elements we explored in the previous section. 
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 input_variables <- inputs$variable_names %>% 
   filter(Variable %in% c("Maximum Relative Humidity", 
                        "Minimum Relative Humidity",
@@ -571,7 +573,7 @@ head(as.data.frame(input_variables))
 
 ### Prepare for parallelization
   We have requested enough information to exceed our download limit and we need to implement a 'parallel' approach to get all the data we want. This strategy has each of the cores in your computer act as their own computer and individually make small requests from the server and then assemble all the little chunks into the final dataset you requested. Here we tell our computer that we are about to send a parallel request and tell the computer how we want to destribute the tasks we send. 
-```{r, eval=FALSE, cache=TRUE}
+```{r, eval=FALSE, cache=TRUE, warning=FALSE, message=FALSE}
 # ask how many cores are available to be farmed out. I subtract one so I still have a core to use for controlling the whole process. 
 n_cores <- availableCores() - 1
 
@@ -581,29 +583,30 @@ plan(multisession, workers = n_cores)
 
 ### Make parallel call to USGS server.
 This is the parallel function from the CFT package. It will shuttle all the data you requested, through all the cores you specified, for the latitude and longitude you requested. This took about 45 minutes on my home laptop with fiber internet. Virtual machines usually only have one core. If you're running this in the cloud, you may need to do some special configuration to get this to actually parallelize.   
-```{r, eval=FALSE, cache=TRUE}
+```{r, eval=FALSE, cache=TRUE, warning=FALSE, message=FALSE}
 out <- single_point_firehose(input_variables, known_lat, known_lon )
 head(out)
 ```
 
 ### Save output
   To save time, I have run the api request above and saved the results for future use. There is no reason to run the api request over and over again. It's easy to save the data once their downloaded and save yourself the download again in the future. 
-```{r, eval=FALSE, cache=TRUE}
+```{r, eval=FALSE, cache=TRUE, warning=FALSE, message=FALSE}
 haskell <- out
 save(haskell, file = "haskell.RData")
 ```
 
 ### Load saved output
   If I have run my api request and saved it to my working directory, then I can load it from here anytime I need. This will save you time as you experiment with different downstream analyes. 
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 load(file = "haskell.RData")
 ```
 
 
 ## Organize climate data
-
+  Our requested climate data are returned from the api server as two data frames. The first data frame is the columns of data that are indexed by a time reference number and the second, which is the list translations from time reference number to actual time. We will join those tables here to make those data easier to work with. Once joined, we convert the time labels from characters to POSIX. POSIX is a special way of handling time and date data in R. We reorder the columns so that the POSIX data is in the first column. This will make it easy to later create a time series object (ts) that can go into our statistical and forecasting functions. Finally, we print the column names of the final transformed data frame to verify that we have time data in the first column and all the requested data as columns after that. 
+  
 ### Join data with dates 
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 # make the time output into it's own dataframe and change column name
 available_times <- inputs[[2]]
 colnames(available_times)[1] <- "time"
@@ -620,11 +623,17 @@ class(haskell_posix$dates)
 haskell_posix <- haskell_posix[,c(93,2, 1,3:92)]
 colnames(haskell_posix)
 ```
+  We imported temperature data, humidity data, and precipitation data. Each of these are handled and modeled in a slightly different way. Here, we'll work through those three data types in sequence and try to draw inference from synthesizing those three pieces of information. 
 
 ### Temperature
-
+  Temperature is the most talked-about component of climate. It's a great indicator of the weather overall, it's a direct output of climate models, and it's a defining characteristic of ecological niches.
+  
 #### Minimum temperature
-```{r, cache=TRUE}
+1. Organize data
+  The climate data we are importing are 'downscaled' from much larger and more complex models. This process of downscaling summarized that more complicated model. This means that we don't need to calculate our own summary statistics (e.g. mean, minimum, or maximum) because we download those summary statistics instead of the raw data. 
+  We start by filtering our full downloaded data set and create a new data set with only minimum temperatures in it. We ordered one scenario from 18 different climate modeling agencies so, our filtered data set should be 18 columns of data plus geography and time tags. We then use the gather() function to reorganize that table so that we have three columns:  dates, variable,
+and value. This reorganization makes the data easy to convert into a time series (ts) object for later analysis and visualization.
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 df_min_temp <- haskell_posix %>%
   st_drop_geometry() %>%
   select(dates, dates,  which(startsWith(colnames(haskell), "tasmin"))) %>%
@@ -633,226 +642,245 @@ df_min_temp <- haskell_posix %>%
 df_min_temp <- df_min_temp[which(df_min_temp$value > 200), ]
 df_min_temp$variable <- as.character(as.numeric(as.factor(df_min_temp$variable)))
 
-#df_min_temp_TS <- as.xts(df_min_temp)
-head(df_min_temp)
+colnames(df_min_temp)
 ```
-
+2. Plot data
+  If we plot our filtered minimum temperature data, we see a chaotic mess because all 18 models are represented on the same graph. We probably want to consider all of the models together.
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
-
-
-all_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value, color = variable)) + 
+all_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value, color = variable)) +
   geom_line()+
   geom_smooth() +
   scale_colour_viridis_d(option="A")
-  
 
 all_climate_projections
 ```
 
+3. Plot as ensemble and fit a general additive model (GAM) to those data
+  If we plot those same data again without the model distinction, we see the ensemble of all 18 climate models. These data were standardized during downscaling, so they are directly comparable now without any more fuss. Notice that these data are in Kelvin. You should alway complet all of your analyses in Kelvin and only translate to Celsius or Fahrenheit for final figures for a general audience. 
+    We apply a general additive model to the data to see what the basic trend looks like. It looks like we should expect a steady increasing in temperature from 281K to 289K between now and 2099. This line doesn't offer much refinement to our existing expectation. Visually, it sits below an area of high data density and it doesn't help us explain any of the season variation we see in the data. This fit makes us want something better. 
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
-
-
-ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = value)) + 
+ensemble_climate_projections <- ggplot(data= df_min_temp, aes(x = dates, y = kelvin.to.fahrenheit(value))) + 
   geom_line(color=our_purple)+
-  geom_smooth(color=our_yellow) +
-  theme_tufte()
-  
+  geom_smooth(color=our_yellow) + #This applies a GAM (general additive model) to the data to find a trend line. 
+  theme_tufte() +
+  geom_hline(yintercept=32)+
+  geom_hline(yintercept=87)+
+  geom_hline(yintercept=105)
 
 ensemble_climate_projections
 ```
 
+Number of days below freezing. Each generation will have one less month of freeze. 
 
+Highest daily low. Each generation experiences an additional 10 days per year with a daily low above 87 degrees F. Three generations see a lot of change. for those trying to accomplish 8 generation planning, modern science can only project less than half way there. 
 ```{r}
-library(stats)
-convert.fft <- function(cs, sample.rate=1) {
-  cs <- cs / length(cs) # normalize
+df_min_temp_F <- df_min_temp
+df_min_temp_F$value <- kelvin.to.fahrenheit(df_min_temp_F$value)
+df_min_temp_F$dates <- format(df_min_temp_F$dates, format = "%Y")
 
-  distance.center <- function(c)signif( Mod(c),        4)
-  angle           <- function(c)signif( 180*Arg(c)/pi, 3)
-  
-  df <- data.frame(cycle    = 0:(length(cs)-1),
-                   freq     = 0:(length(cs)-1) * sample.rate / length(cs),
-                   strength = sapply(cs, distance.center),
-                   delay    = sapply(cs, angle))
-  df
-}
+below_freezing <- df_min_temp_F %>%
+  filter(value <=32) %>%
+  group_by(dates)%>%
+  summarise(cold_counts = n()/18)
 
-fft_out  <- convert.fft(fft(df_min_temp$value))
-head(fft_out)
-```
+high_lows <- df_min_temp_F %>%
+  filter(value >=87) %>%
+  group_by(dates)%>%
+  summarise(high_lows_counts = n()/18)
 
-```{r}
-library(reticulate)
-x <- r_to_py(df_min_temp$time)
- y <- r_to_py(df_min_temp$value)
- minTemp <- r_to_py(df_min_temp[,c(1,3)])
-```
+ scorching_nights <- df_min_temp_F %>%
+  filter(value >=105) %>%
+  group_by(dates)%>%
+  summarise(scorching_nights_counts = n()/18)
 
-
-
-
-```{python, cache=TRUE, eval=FALSE}
-import numpy as np
-import matplotlib.pyplot as plt
- 
-x = list(range(len(r.x)))
-y = r.y
-
-# apply fast fourier transform and take absolute values
-f=abs(np.fft.fft(r.y))
-
-# get the list of frequencies
-num=np.size(x)
-freq = [i / num for i in list(range(num))]
-
-# get the list of spectrums
-spectrum=f.real*f.real+f.imag*f.imag
-nspectrum=spectrum/spectrum[0]
-
-
-plt.clf()
-# plot nspectrum per frequency, with a semilog scale on nspectrum
-plt.semilogy(freq,nspectrum)
-
-
-plt.show()
-```
-
-```{python, cache=TRUE, eval=FALSE}
-# improve the plot by adding periods in number of weeks rather than  frequency
-import pandas as pd
-results = pd.DataFrame({'freq': freq, 'nspectrum': nspectrum})
-results['period'] = results['freq'] / (1/52)
-
-plt.clf()
-plt.semilogy(results['period'], results['nspectrum'])
-plt.show()
-```
-
-```{python, cache=TRUE, eval=FALSE}
-
-# improve the plot by converting the data into grouped per week to avoid peaks
-results['period_round'] = results['period'].round()
-grouped_week = results.groupby('period_round')['nspectrum'].sum()
-
-plt.clf()
-plt.semilogy(grouped_week.index, grouped_week)
-plt.xticks([1, 13, 26, 39, 52])
-plt.show()
+  ggplot(data = below_freezing, aes(x = dates, y=cold_counts)) +
+           geom_point(color=our_purple)+
+    geom_point(data = high_lows, aes(x = dates, y=high_lows_counts),color=our_yellow)+
+    geom_point(data = scorching_nights, aes(x = dates, y=scorching_nights_counts),color=our_blue)+
+  theme_tufte() +
+    ylim(0,100) + 
+    ylab("number of days") +
+  geom_hline(yintercept=0)+
+  geom_hline(yintercept=35)
 ```
 
 
-```{r, cache=TRUE, warning=FALSE}
-temp <- ts(df_min_temp[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
-decomp_temp <- decompose(temp)
-plot(decomp_temp, col=our_purple)
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+min_temp <- ts(df_min_temp[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
 ```
 
 
-```{r, cache=TRUE, warning=FALSE, eval=FALSE, include=FALSE}
-birthsSeasonAdj <- temp - decomp_temp$seasonal 
-plot.ts(birthsSeasonAdj, col=our_purple)
-plot.ts(decomp_temp$trend, col=our_purple)
-dd <- decomp_temp$trend
-p <- ggplot(dd, aes(x=day, y=value)) +
-  geom_line() + 
-  xlab("")
-p
+4. Decompose the time series using fourier analysis.
+  Fourier analyses are a convenient way to decompose repeating waves and are a mainstay of time series analyses. The analysis presented here finds the seasonal harmonic in the data and subtracts that harmonic from the data to show the difference between trend and noise. We start by converting our data into a ts object and passes that ts object to the decompose() function. When we plot that deconstruction, we see that the resultant trend line is much more nuanced than our previous fit.  
 
-
-temp %>%
+Here is the GAM fit
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+min_temp %>%
   decompose() %>%
-  autoplot()
+  autoplot() + theme_tufte()
+```
+
+We can also use a different decompositions model, here the STL model, which is a loess model for time series data. The STL  
+
+Here is the loess fit
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+min_temp %>%
+ stl(s.window = "periodic") %>%
+  autoplot() + theme_tufte()
+```
+#### Estimate Spectral Density of a Time Series
+  This is the fourier spectral breakdown for the decomposition. You can see the strong first harmonic that is easy to pull out and makes the decomposition of this data go relatively fast for this size of dataset. 
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+autoplot(spec.ar(min_temp, plot = FALSE))+ theme_tufte()
+``` 
+
+
+#### Verify that our use of an additive model was appropriate. 
+  Time series can come in a couple different flavors. The two that are common in decomposition analyses are additive and multiplicative harmonics. We made the assumption that temperature increase was additive and we can validate that assumption here with an autocorrelation function (ACF), which is the coefficient of correlation between two values in a time series. The results show the gradual decline of ACF along the time series. This is the result of our one-step-ahead climate predictions that use the previous year to predict the next year. this means that there is strong correlation between adjoining years, but that the correlation degrades in one direction from no into the future. You see that years in the near future are tightly coupled with each other but that covariance degrades over time so we have less confidence in the end of the time series than we do about the beginning. A multiplicative relationship would inflate rapidly over time and show an exponential relationship here. You might expect multiplicative relationships with time series of demographic growth, stock trends, or social media 'likes' because those all present mechanisms that can multiply rather than add.  
+  
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+autoplot(acf(min_temp, plot = FALSE))+ theme_tufte()
+```
+
+#### Forecast models
+  We need to make an important distinctions between the different types of forecasting happening in this analysis. Our climate data are forecast into the future using global mechanistic models simulating the collision of air molecules and the accumulation of gasses that change climate and weather patterns over decades. Those models produce the data we download and use as raw data to describe our local future. The forecasting we're about to do, we're looking for statistical trends contained within that data. There is no natural or environmental mechanism in this forecasting. 
+  The arima forecast is a statistical forecasting method that fits a model to the data using the same decomposition method we described above (GAN) and then calculates an acceptable forecast window based on the predictability of the trend relative to the data. 
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+seasonally_adjusted_min_temp <- min_temp %>% stl(s.window='periodic') %>% seasadj() 
+min_plot <- autoplot(seasonally_adjusted_min_temp) 
+#+ 
+ # theme_tufte() + 
+  #geom_smooth(col=our_yellow)
+
+min_plot
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+arima_min_temp <- auto.arima(seasonally_adjusted_min_temp)
+arima_min_temp
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+bullseye <- autoplot(arima_min_temp) 
+bullseye
 ```
 
 
-```{r, eval=FALSE}
-ggplot(akl_daily, aes(x = max_temp, y = month, height = ..density..)) +
-  geom_density_ridges(stat = "density")
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+checkresiduals(arima_min_temp)
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+seasonally_adjusted_min_temp %>% diff() %>% ggtsdisplay(main="") + theme_tufte()
 ```
 
 
-```{r, cache=TRUE, warning=FALSE, eval=FALSE}
-library(ggfortify)
-autoplot(stl(temp, s.window = 'periodic'), ts.colour = our_purple)
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+autoplot(cpt.meanvar(seasonally_adjusted_min_temp), cpt.colour = 'blue', cpt.linetype = 'solid')
 ```
 
 
-```{r, cache=TRUE, warning=FALSE}
-autoplot(acf(temp, plot = FALSE))
-```
-
-```{r, cache=TRUE, warning=FALSE}
-autoplot(acf(temp, plot = FALSE), conf.int.fill = '#0000FF', conf.int.value = 0.8, conf.int.type = 'ma')
-```
-
-```{r, cache=TRUE, warning=FALSE}
-autoplot(spec.ar(temp, plot = FALSE))
-```
-
-```{r, eval=FALSE}
-library(forecast)
-ggtsdiag(auto.arima(temp))
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+arima_min_temp %>% forecast(h=2400) %>% autoplot()
 ```
 
 
-```{r, cache=TRUE, warning=FALSE, eval=FALSE}
-ggout <- ggfreqplot(temp, freq=100) +
-  theme_tufte() 
-ggsave(ggout, filename = "freqplot.png", width = 11, height = 8.5, unit="in", dpi=600)
-```
-
-```{r, cache=TRUE, warning=FALSE}
-library(forecast)
-temp %>% stl(s.window='periodic') %>% seasadj() -> eeadj
-autoplot(eeadj)
-```
-```{r, cache=TRUE, warning=FALSE}
-eeadj %>% diff() %>% ggtsdisplay(main="")
-```
-
-```{r, cache=TRUE, warning=FALSE}
-(fit <- Arima(eeadj, order=c(5,1,2)))
-#(fit <- Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),
-#  lambda=0))
-
-checkresiduals(fit)
-```
-
-```{r, cache=TRUE, warning=FALSE}
-auto.arima(eeadj)
-
-```
-
-
-```{r, cache=TRUE, warning=FALSE}
-fit %>% forecast(h=12) %>% autoplot()
-
-autoplot(fit)
-```
-
-
-```{r, cache=TRUE, warning=FALSE}
-length(eeadj)
- interval <- unclass(fit$tsp$interval)
-    interval <- Filter(function(x) x!=0, interval)
-
-eeadj %>%
-  Arima( order=c(5,1,2)) %>%
-  forecast() %>%
-  autoplot() +
-    ylab("min temp") + xlab("Year")
-
-
-```
-
-
-```{r, cache=TRUE, warning=FALSE}
-ggplot(data= df_min_temp, aes(x = dates, y = value)) + 
-  geom_smooth(color=our_purple) +
-  theme_tufte()
-```
 #### Maximum temperature
+The cyverse folks join us from Arizona will think thi
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+df_max_temp <- haskell_posix %>%
+  st_drop_geometry() %>%
+  select(dates, dates,  which(startsWith(colnames(haskell), "tasmax"))) %>%
+  gather(key = "variable", value = "value", -dates)
+
+df_max_temp <- df_max_temp[which(df_max_temp$value > 200), ]
+df_max_temp$variable <- as.character(as.numeric(as.factor(df_max_temp$variable)))
+
+#df_min_temp_TS <- as.xts(df_min_temp)
+colnames(df_max_temp)
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+ensemble_climate_projections <- ggplot(data= df_max_temp, aes(x = dates, y = kelvin.to.fahrenheit(value))) + 
+  geom_line(color=our_purple)+
+  geom_smooth(color=our_yellow) + #This applies a GAM (general additive model) to the data to find a trend line. 
+  theme_tufte() +
+  geom_hline(yintercept=114)+
+  geom_hline(yintercept=32) + 
+  ylab("temperature (F)")
+
+ensemble_climate_projections
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+df_max_temp_F <- df_max_temp
+df_max_temp_F$value <- kelvin.to.fahrenheit(df_max_temp_F$value)
+df_max_temp_F$dates <- format(df_max_temp_F$dates, format = "%Y")
+
+beyond_max_temp <- df_max_temp_F %>%
+  filter(value >=114) %>%
+  group_by(dates)%>%
+  summarise(beyond_max = n()/18)
+
+max_below_freezing <- df_max_temp_F %>%
+  filter(value <=32) %>%
+  group_by(dates)%>%
+  summarise(below_freezing = n()/18)
+
+  ggplot(data = beyond_max_temp, aes(x = dates, y=beyond_max)) +
+           geom_point(color=our_purple)+
+    geom_point(data = max_below_freezing, aes(x = dates, y=below_freezing), color=our_yellow)+
+  theme_tufte() +
+    ylim(0,15) +
+    ylab("number of days")
+  
+ 
+```
+
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+max_temp <- ts(df_max_temp[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+seasonally_adjusted_max_temp <- max_temp %>% stl(s.window='periodic') %>% seasadj() 
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+arima_max_temp <- auto.arima(seasonally_adjusted_max_temp)
+arima_max_temp
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+arima_max_temp %>% forecast(h=2400) %>% autoplot()
+```
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+autoplot(cpt.meanvar(seasonally_adjusted_max_temp), cpt.colour = 'blue', cpt.linetype = 'solid')
+```
+
+
+
+
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
+
+min_temp_df <- kelvin.to.fahrenheit(as.data.frame(seasonally_adjusted_min_temp))
+max_temp_df <- kelvin.to.fahrenheit(as.data.frame(seasonally_adjusted_max_temp))
+ggplot(data=min_temp_df, aes(y=x, x=seq(1, length(x)))) + 
+  geom_line(data=min_temp_df, color=our_purple) +
+  geom_line(data=max_temp_df, color=our_purple) +
+  geom_smooth(data=min_temp_df,color=our_yellow, alpha=1) +
+  geom_smooth(data=max_temp_df,color=our_yellow, alpha=1) +
+  theme_tufte() +
+  
+  geom_hline(yintercept=114)+
+  geom_hline(yintercept=32) + 
+  ylab("temperature (F)")
+
+```
+
 
 ### Relative Humidity
 ```{r, cache=TRUE}
@@ -882,7 +910,7 @@ all_climate_projections_RH
 
 
 #### Minimum RH
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 df_RH_min <- haskell %>%
   st_drop_geometry() %>%
   select(time,which(startsWith(colnames(haskell), "rhsmin"))) %>%
@@ -892,7 +920,7 @@ head(df_RH_min)
 
 
 #### Maximum RH
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 df_RH_max <- haskell %>%
   st_drop_geometry() %>%
   select(time,which(startsWith(colnames(haskell), "rhsmax"))) %>%
@@ -903,7 +931,7 @@ head(df_RH_max)
 ### Precipitation
 
 #### Zero-inflated data
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 df_precip <- haskell_posix %>%
   st_drop_geometry() %>%
   select(dates, which(startsWith(colnames(haskell), "pr"))) %>%
@@ -924,13 +952,13 @@ all_climate_projections_RH
 ```
 
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 precip_ts <- ts(df_precip[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
 decomp_precip <- decompose(precip_ts)
 plot(decomp_precip, col=our_purple)
 ```
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 all_climate_projections <- ggplot(data= df_precip, aes(x = dates, y = value, color = variable)) + 
   geom_line(color=our_purple)+
   theme_tufte()
@@ -939,43 +967,43 @@ all_climate_projections
 ```
 
 
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 plot.ts(decomp_precip$trend, col=our_purple)
 ```
 
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 autoplot(spec.ar(precip_ts, plot = FALSE))
 ```
 
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 
 autoplot(stl(precip_ts, s.window = 'periodic'), ts.colour = our_purple)
 ```
 
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 autoplot(acf(precip_ts, plot = FALSE))
 ```
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 autoplot(acf(precip_ts, plot = FALSE), conf.int.fill = '#0000FF', conf.int.value = 0.8, conf.int.type = 'ma')
 ```
 
 
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 precip_ts %>% stl(s.window='periodic') %>% seasadj() -> eeadj
 autoplot(eeadj)
 ```
 
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 eeadj %>% diff() %>% ggtsdisplay(main="")
 ```
 
 
-```{r, cache=TRUE, warning=FALSE}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 auto.arima(eeadj)
 
 ```
