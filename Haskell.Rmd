@@ -54,6 +54,8 @@ library(osmdata)
 library(osmextract)
 library(changepoint)
 library(weathermetrics)
+library(TSstudio)
+ library(ggridges)
 ```
 
 ```{r, eval=FALSE}
@@ -777,6 +779,7 @@ seasonally_adjusted_min_temp %>% diff() %>% ggtsdisplay(main="") + theme_tufte()
 ```
 
 
+
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
 autoplot(cpt.meanvar(seasonally_adjusted_min_temp), cpt.colour = 'blue', cpt.linetype = 'solid')
 ```
@@ -848,20 +851,26 @@ max_temp <- ts(df_max_temp[,3], frequency = 365, start = c(2006, 1), end = c(209
 seasonally_adjusted_max_temp <- max_temp %>% stl(s.window='periodic') %>% seasadj() 
 ```
 
+```{r}
+max_temp %>%
+ stl(s.window = "periodic") %>%
+  autoplot() + theme_tufte()
+```
+
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
 arima_max_temp <- auto.arima(seasonally_adjusted_max_temp)
 arima_max_temp
 ```
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-arima_max_temp %>% forecast(h=2400) %>% autoplot()
-```
+
 
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
 autoplot(cpt.meanvar(seasonally_adjusted_max_temp), cpt.colour = 'blue', cpt.linetype = 'solid')
 ```
 
-
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+arima_max_temp %>% forecast(h=2400) %>% autoplot()
+```
 
 
 ```{r,  cache=TRUE, warning=FALSE, message=FALSE}
@@ -883,229 +892,265 @@ ggplot(data=min_temp_df, aes(y=x, x=seq(1, length(x)))) +
 
 
 ### Relative Humidity
-```{r, cache=TRUE}
-df_RH <- haskell %>%
-  st_drop_geometry() %>%
-  select(time,which(startsWith(colnames(haskell), "rhs")) ) %>%
-  gather(key = "variable", value = "value", -time)
-```
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-all_climate_projections_RH <- ggplot(data= df_RH, aes(x = time, y = value, color = variable)) + 
-  #geom_line()+
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
+cft_time_series <- function(data, variable){
+require(dplyr)
+require(ggplot2)
+require(ggfortify)
+require(changepoint)
+require(weathermetrics)
+
+inputs <- cft::available_data()  
+available_times <- inputs[[2]]
+colnames(available_times)[1] <- "time"
+
+# left join the time data into the spatial data
+data_posix <- data %>%
+  left_join(available_times, by="time")
   
+# convert time format into POSIX, which is a format that deals with all the confusion of time and data formats (e.g. time zones and translation between numbers and word descriptions for time)
+data_posix$dates <- as.POSIXct(data_posix$dates)
+
+#reorder so that dates are the first column
+data_posix <- data_posix[,c(93,2, 1,3:92)]
+
+print("Combined data with verbose dates.")
+
+df <- data_posix %>%
+  st_drop_geometry() %>%
+  select(dates,which(startsWith(colnames(data), variable)) ) %>%
+  gather(key = "variable", value = "value", -dates)
+
+print("regroup data")
+  
+plot1 <- ggplot(data= df, aes(x = dates, y = value, color = variable)) + 
   scale_colour_viridis_d(option="A", alpha = 0.8) +
   geom_smooth() +
   theme_tufte() +
   theme(legend.position = "none") 
+
+df_min <- data_posix %>%
+  st_drop_geometry() %>%
+  select(dates,which(startsWith(colnames(data_posix), paste0(variable,"min")))) %>%
+  gather(key = "variable", value = "value", -dates)
+
+df_max <- data_posix %>%
+  st_drop_geometry() %>%
+  select(dates,which(startsWith(colnames(data_posix), paste0(variable,"max")))) %>%
+  gather(key = "variable", value = "value", -dates)
+
+plot2 <- ggplot(data= data_posix, aes(x = dates, y = value) )+ 
+  geom_smooth(data= df_min, color=our_purple) +
+  geom_smooth(data= df_max, color=our_purple) +
+  theme_tufte() 
+
+print("Filtered to seperate out min and max values")
+
+min_ts <- ts(df_min[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
+max_ts <- ts(df_max[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
+
+print("Converted to time series object")
+
+seasonally_adjusted_min_ts <- min_ts %>% stl(s.window='periodic') %>% seasadj()
+seasonally_adjusted_max_ts <- max_ts %>% stl(s.window='periodic') %>% seasadj()
+
+plot3 <- min_ts %>%
+ stl(s.window = "periodic") %>%
+  autoplot() + theme_tufte()
+
+plot4 <- max_ts %>%
+ stl(s.window = "periodic") %>%
+  autoplot() + theme_tufte()
+
+print("Fit moving window model to max and min")
+
+arima_min_ts <- auto.arima(seasonally_adjusted_min_ts)
+arima_min_ts
+
+arima_max_ts <- auto.arima(seasonally_adjusted_max_ts)
+arima_max_ts
+
+plot5 <- autoplot(cpt.meanvar(seasonally_adjusted_min_ts), cpt.colour = 'purple', cpt.linetype = 'solid')
+plot6 <- autoplot(cpt.meanvar(seasonally_adjusted_max_ts), cpt.colour = 'purple', cpt.linetype = 'solid')
+
+print("Fit arima model to min and max.")
+
+plot7 <- arima_min_ts %>% forecast(h=2400) %>% autoplot()
+plot8 <- arima_max_ts %>% forecast(h=2400) %>% autoplot()
+
+print("Statistical Forecast for 20 years.")
+
+min_ts_df <- as.data.frame(seasonally_adjusted_min_ts)
+max_ts_df <- as.data.frame(seasonally_adjusted_max_ts)
+plot9 <- ggplot(data=min_ts_df, aes(y=x, x=seq(1, length(x)))) + 
+  geom_line(data=min_ts_df, color=our_purple) +
+  geom_line(data=max_ts_df, color=our_purple) +
+  geom_smooth(data=min_ts_df,color=our_yellow, alpha=1) +
+  geom_smooth(data=max_ts_df,color=our_yellow, alpha=1) +
+  theme_tufte() +
+  geom_hline(yintercept=100)+
+  geom_hline(yintercept=0) + 
+  ylab("humidity")
+
+print("done!")
   
+  return(list(df, df_min, df_max, min_ts, max_ts, seasonally_adjusted_min_ts, seasonally_adjusted_max_ts, plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8, plot9 ))
+}
 
-all_climate_projections_RH
+cft_time_series(haskell, "rhs")
 ```
 
 
-
-
-
-
-
-#### Minimum RH
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-df_RH_min <- haskell %>%
-  st_drop_geometry() %>%
-  select(time,which(startsWith(colnames(haskell), "rhsmin"))) %>%
-  gather(key = "variable", value = "value", -time)
-head(df_RH_min)
-```
-
-
-#### Maximum RH
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-df_RH_max <- haskell %>%
-  st_drop_geometry() %>%
-  select(time,which(startsWith(colnames(haskell), "rhsmax"))) %>%
-  gather(key = "variable", value = "value", -time)
-head(df_RH_max)
-```
 
 ### Precipitation
 
 #### Zero-inflated data
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-df_precip <- haskell_posix %>%
+
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
+cft_time_series.precip <- function(data, variable){
+require(dplyr)
+require(ggplot2)
+require(ggfortify)
+require(changepoint)
+require(weathermetrics)
+  
+  inputs <- cft::available_data()  
+available_times <- inputs[[2]]
+colnames(available_times)[1] <- "time"
+
+# left join the time data into the spatial data
+data_posix <- data %>%
+  left_join(available_times, by="time")
+  
+# convert time format into POSIX, which is a format that deals with all the confusion of time and data formats (e.g. time zones and translation between numbers and word descriptions for time)
+data_posix$dates <- as.POSIXct(data_posix$dates)
+
+#reorder so that dates are the first column
+data_posix <- data_posix[,c(93,2, 1,3:92)]
+
+print("Combined data with verbose dates.")
+
+df <- data_posix %>%
   st_drop_geometry() %>%
-  select(dates, which(startsWith(colnames(haskell), "pr"))) %>%
+  select(dates,which(startsWith(colnames(data), "pr")) ) %>%
   gather(key = "variable", value = "value", -dates)
-head(df_precip)
-```
 
-
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-all_climate_projections_RH <- ggplot(data= df_RH_min, aes(x = time, y = value) )+ 
-  geom_smooth(data= df_RH_min, color=our_purple) +
-  geom_smooth(data= df_RH_max, color=our_purple) +
-  theme_tufte() +
-  ylim(0,100)
+print("regroup data")
   
+precip_ts <- ts(df[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
 
-all_climate_projections_RH
-```
-
-
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-precip_ts <- ts(df_precip[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
-decomp_precip <- decompose(precip_ts)
-plot(decomp_precip, col=our_purple)
-```
-
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-all_climate_projections <- ggplot(data= df_precip, aes(x = dates, y = value, color = variable)) + 
-  geom_line(color=our_purple)+
-  theme_tufte()
-
-all_climate_projections
-```
+plot1 <- ts_decompose(precip_ts) 
+plot2 <- ts_plot(precip_ts, slider=TRUE)
+plot3 <- ts_heatmap(precip_ts)
+plot4 <- ts_seasonal(precip_ts, type = "all")
+plot5 <- ts_seasonal(precip_ts - decompose(precip_ts)$trend, 
+             type = "all", 
+             title = "Seasonal Plot - precipitation (Detrend)")
+plot6 <- ts_surface(precip_ts)
 
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-plot.ts(decomp_precip$trend, col=our_purple)
-```
+seasonally_adjusted_ts <- precip_ts %>% stl(s.window='periodic') %>% seasadj()
+
+arima_ts <- auto.arima(seasonally_adjusted_ts)
 
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-autoplot(spec.ar(precip_ts, plot = FALSE))
-```
-
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-
-autoplot(stl(precip_ts, s.window = 'periodic'), ts.colour = our_purple)
-```
+plot7 <- autoplot(cpt.meanvar(seasonally_adjusted_ts), cpt.colour = 'purple', cpt.linetype = 'solid')
 
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-autoplot(acf(precip_ts, plot = FALSE))
-```
+print("Fit arima model to min and max.")
 
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-autoplot(acf(precip_ts, plot = FALSE), conf.int.fill = '#0000FF', conf.int.value = 0.8, conf.int.type = 'ma')
-```
+plot8 <- arima_ts %>% forecast(h=2400) %>% autoplot()
 
 
-
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-precip_ts %>% stl(s.window='periodic') %>% seasadj() -> eeadj
-autoplot(eeadj)
-```
-
-
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-eeadj %>% diff() %>% ggtsdisplay(main="")
-```
-
-
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-auto.arima(eeadj)
-
-```
-
-```{r, cache=TRUE, warning=FALSE}
-(fit <- Arima(eeadj, order=c(3,0,1)))
-#(fit <- Arima(eeadj, order=c(3,0,1), seasonal=c(0,1,2),
-#  lambda=0))
-
-checkresiduals(fit)
-```
-
-
-```{r, cache=TRUE, warning=FALSE}
-fit %>% forecast(h=12) %>% autoplot()
-
-autoplot(fit)
-```
-
-
-```{r, cache=TRUE, warning=FALSE}
-length(eeadj)
- interval <- unclass(fit$tsp$interval)
-    interval <- Filter(function(x) x!=0, interval)
-
-eeadj %>%
-  Arima( order=c(3,0,1)) %>%
-  forecast() %>%
-  autoplot() +
-    ylab("min temp") + xlab("Year")
-
-
-```
-
-
-```{r, cache=TRUE, warning=FALSE,  message=FALSE}
-
-df_precip_2 <- df_precip[which(df_precip$value != 0),]
-
-ensemble_climate_projections <- ggplot(data= df_precip_2, aes(x = dates, y = value)) + 
-   geom_line(color=our_purple)+
-  geom_smooth(color=our_yellow)+
-  theme_tufte()
+  print("done!")
   
+  return(list(df = list(df, precip_ts), plots = list(plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8 )))
+}
 
-ensemble_climate_projections
-
-ggplot(data= df_precip, aes(x = dates, y = value)) + 
-     geom_smooth(color=our_purple)+
-  theme_tufte()
+precip_summary <-  cft_time_series.precip(haskell, "pr")
+precip_summary$plots
 ```
-
-
-```{r, cache=TRUE}
-df_precip_quant_95 <- df_precip %>% 
-  mutate(quant = ntile(value, 100)) %>%
-  filter(quant == 95)
-
-df_precip_quant_96 <- df_precip %>% 
-  mutate(quant = ntile(value, 100)) %>%
-  filter(quant == 96)
-
-df_precip_quant_97 <- df_precip %>% 
-  mutate(quant = ntile(value, 100)) %>%
-  filter(quant == 97)
-
-df_precip_quant_98 <- df_precip %>% 
-  mutate(quant = ntile(value, 100)) %>%
-  filter(quant == 98)
-
-df_precip_quant_99 <- df_precip %>% 
-  mutate(quant = ntile(value, 100)) %>%
-  filter(quant == 99)
-
-df_precip_quant_100 <- df_precip %>% 
-  mutate(quant = ntile(value, 100)) %>%
-  filter(quant == 100)
-
-df_precip_quant_1000 <- df_precip %>% 
-  mutate(quant = ntile(value, 1000)) %>%
-  filter(quant == 1000)
-
-df_precip_quant_100000 <- df_precip %>% 
-  mutate(quant = ntile(value, 100000)) %>%
-  filter(quant == 100000)
-```
-
-
 
 
 
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
-ggplot(data= df_precip, aes(x = dates, y = value)) + 
-     geom_smooth(data= df_precip, color=our_purple)+ 
-     geom_smooth(data= df_precip_quant_95, color=our_purple) +
-    geom_smooth(data= df_precip_quant_96, color=our_purple) +
-    geom_smooth(data= df_precip_quant_97, color=our_purple) +
-    geom_smooth(data= df_precip_quant_98, color=our_purple) +
-    geom_smooth(data= df_precip_quant_99, color=our_purple) +
-  geom_smooth(data= df_precip_quant_100, color=our_purple) +
-  geom_smooth(data= df_precip_quant_1000, color=our_purple) +
-    geom_smooth(data= df_precip_quant_100000, color=our_purple) +
-  theme_tufte()
+autoplot(acf(precip_summary$df[[2]], plot = FALSE))
 ```
+
+
+2.78 inches of rain = 70 mm of rain
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+
+all_rain <- precip_summary$df[[1]] %>%
+   filter(value > 0) %>%
+filter(str_detect(variable, "pr") ) 
+
+epic_rain <- precip_summary$df[[1]] %>%
+  filter(value >= 100) %>%
+filter(str_detect(variable, "pr") ) 
+
+extreme_rain <- precip_summary$df[[1]] %>%
+  filter(value >= 70) %>%
+filter(str_detect(variable, "pr") ) 
+
+no_rain <- precip_summary$df[[1]] %>%
+  filter(value == 0) %>%
+filter(str_detect(variable, "pr") ) 
+
+
+ggplot(data = extreme_rain, aes(x = dates, y=value)) +
+           geom_point(color=our_purple)
+
+ggplot(data = no_rain, aes(x = dates, y=value)) +
+           geom_point(color=our_purple)
+
+extreme_rain_counts <- extreme_rain %>%
+  group_by(dates) %>%
+  summarise(beyond_max = n()/18)
+
+
+no_rain_counts <- no_rain %>%
+  group_by(dates) %>%
+  summarise(beyond_max = n()/18)
+
+  
+  
+  extreme_rain_counts$dates <- format(extreme_rain_counts$dates, format="%Y")
+  no_rain_counts$dates <- format(no_rain_counts$dates, format="%Y")
+  all_rain$dates <- format(all_rain$dates, format="%Y")
+  epic_rain$dates <- format(epic_rain$dates, format="%Y")
+  epic_rain$value <- metric_to_inches(epic_rain$value, unit.from = "mm")
+ 
+  
+  
+  ggplot(data=all_rain, aes(x = value, y = dates)) +
+   geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03)+
+     coord_flip() +
+  theme_ridges(grid = FALSE) +
+    theme_tufte() + xlim(0,50)
+  
+  
+   ggplot(data=extreme_rain_counts, aes(x = beyond_max, y = dates, group=dates)) +
+   geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03)+
+     coord_flip() +
+  theme_ridges(grid = FALSE) +
+   theme_tufte() 
+   
+    ggplot(data=no_rain_counts, aes(x = beyond_max, y = dates, group=dates)) +
+   geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03)+
+     coord_flip() +
+  theme_ridges(grid = FALSE) +
+    theme_tufte()
+    
+    ggplot(data=epic_rain, aes(y = value, x = dates)) +
+      geom_point()+
+    theme_tufte() +
+      ylab("inches of rain per day")
+  
+```
+
+![The 1951 flood resulted from 8-16 inches over 4 days](https://www.weather.gov/top/1951_flood)
+
+
 
