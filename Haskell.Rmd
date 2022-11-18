@@ -1,11 +1,11 @@
 ---
 title: 'Sensing the Earth: CFT tutorial'
 output:
-  cleanrmd::html_document_clean:
-    theme: style-serif
   html_document:
     toc: yes
     df_print: paged
+  cleanrmd::html_document_clean:
+    theme: style-serif
   pdf_document:
     template: /Users/ty/Downloads/Eisvogel-2.0.0/eisvogel.latex
     toc: yes
@@ -15,7 +15,7 @@ output:
 ---
 \let\oldsection\section
 \renewcommand\section{\clearpage\oldsection}
-```{r}
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
 
 
 options(knitr.kable.NA = '')
@@ -56,9 +56,13 @@ library(changepoint)
 library(weathermetrics)
 library(TSstudio)
  library(ggridges)
+library(plotly)
+library(htmlwidgets)
+library(IRdisplay)
+library(knitr)
 ```
 
-```{r, eval=FALSE}
+```{r, eval=FALSE,  cache=TRUE, warning=FALSE, message=FALSE}
 conda_update(conda = "auto")
 py_install("numpy")
 py_install("matplotlib")
@@ -154,7 +158,7 @@ head(Haskell_university_buildings1)
 ```
 
   The janitor package is useful for performing automated cleaning tasks on your data. Here we remove all of the columns that contain no data to make our dataframe much smaller and easier to read. 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE,  cache=TRUE, warning=FALSE, message=FALSE}
 boundaries1 <- janitor::remove_empty(as.data.frame(Haskell_university_buildings1), which = "cols")
 boundaries1
 ```
@@ -675,26 +679,29 @@ ensemble_climate_projections
 Number of days below freezing. Each generation will have one less month of freeze. 
 
 Highest daily low. Each generation experiences an additional 10 days per year with a daily low above 87 degrees F. Three generations see a lot of change. for those trying to accomplish 8 generation planning, modern science can only project less than half way there. 
-```{r}
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
 df_min_temp_F <- df_min_temp
 df_min_temp_F$value <- kelvin.to.fahrenheit(df_min_temp_F$value)
 df_min_temp_F$dates <- format(df_min_temp_F$dates, format = "%Y")
 
 below_freezing <- df_min_temp_F %>%
   filter(value <=32) %>%
-  group_by(dates)%>%
-  summarise(cold_counts = n()/18)
+  count(dates) %>%
+  mutate(cold_counts = n/18)
+  
 
 high_lows <- df_min_temp_F %>%
   filter(value >=87) %>%
-  group_by(dates)%>%
-  summarise(high_lows_counts = n()/18)
+  count(dates) %>%
+  mutate(high_lows_counts = n/18)
 
+  
  scorching_nights <- df_min_temp_F %>%
   filter(value >=105) %>%
-  group_by(dates)%>%
-  summarise(scorching_nights_counts = n()/18)
-
+   count(dates) %>%
+  mutate(scorching_nights_counts = n/18)
+ 
+  
   ggplot(data = below_freezing, aes(x = dates, y=cold_counts)) +
            geom_point(color=our_purple)+
     geom_point(data = high_lows, aes(x = dates, y=high_lows_counts),color=our_yellow)+
@@ -824,14 +831,16 @@ df_max_temp_F$dates <- format(df_max_temp_F$dates, format = "%Y")
 
 beyond_max_temp <- df_max_temp_F %>%
   filter(value >=114) %>%
-  group_by(dates)%>%
-  summarise(beyond_max = n()/18)
+  count(dates) %>%
+  mutate(beyond_max = n/18)
+
 
 max_below_freezing <- df_max_temp_F %>%
   filter(value <=32) %>%
-  group_by(dates)%>%
-  summarise(below_freezing = n()/18)
+  count(dates) %>%
+  mutate(below_freezing = n/18)
 
+ 
   ggplot(data = beyond_max_temp, aes(x = dates, y=beyond_max)) +
            geom_point(color=our_purple)+
     geom_point(data = max_below_freezing, aes(x = dates, y=below_freezing), color=our_yellow)+
@@ -851,7 +860,7 @@ max_temp <- ts(df_max_temp[,3], frequency = 365, start = c(2006, 1), end = c(209
 seasonally_adjusted_max_temp <- max_temp %>% stl(s.window='periodic') %>% seasadj() 
 ```
 
-```{r}
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
 max_temp %>%
  stl(s.window = "periodic") %>%
   autoplot() + theme_tufte()
@@ -995,10 +1004,14 @@ plot9 <- ggplot(data=min_ts_df, aes(y=x, x=seq(1, length(x)))) +
 
 print("done!")
   
-  return(list(df, df_min, df_max, min_ts, max_ts, seasonally_adjusted_min_ts, seasonally_adjusted_max_ts, plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8, plot9 ))
+  return(list(df=list(df, df_min, df_max, min_ts, max_ts, seasonally_adjusted_min_ts, seasonally_adjusted_max_ts),plots=list( plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8, plot9) ))
 }
 
-cft_time_series(haskell, "rhs")
+RH_summary <- cft_time_series(haskell, "rhs")
+```
+
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
+RH_summary$plots
 ```
 
 
@@ -1008,6 +1021,8 @@ cft_time_series(haskell, "rhs")
 #### Zero-inflated data
 
 ```{r,  cache=TRUE, warning=FALSE, message=FALSE}
+
+
 cft_time_series.precip <- function(data, variable){
 require(dplyr)
 require(ggplot2)
@@ -1040,7 +1055,9 @@ print("regroup data")
   
 precip_ts <- ts(df[,3], frequency = 365, start = c(2006, 1), end = c(2099,365))
 
-plot1 <- ts_decompose(precip_ts) 
+plot1 <- ts_decompose(precip_ts)
+
+
 plot2 <- ts_plot(precip_ts, slider=TRUE)
 plot3 <- ts_heatmap(precip_ts)
 plot4 <- ts_seasonal(precip_ts, type = "all")
@@ -1063,15 +1080,30 @@ print("Fit arima model to min and max.")
 plot8 <- arima_ts %>% forecast(h=2400) %>% autoplot()
 
 
+saveWidget(plot1, "plot1.html")
+saveWidget(plot2, "plot2.html")
+saveWidget(plot3, "plot3.html")
+saveWidget(plot4, "plot4.html")
+saveWidget(plot5, "plot5.html")
+saveWidget(plot6, "plot6.html")
+
   print("done!")
   
   return(list(df = list(df, precip_ts), plots = list(plot1, plot2, plot3, plot4, plot5, plot6, plot7, plot8 )))
 }
 
 precip_summary <-  cft_time_series.precip(haskell, "pr")
-precip_summary$plots
 ```
 
+```{r,  cache=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+
+include_url("plot1.html", height = "400px")
+include_url("plot2.html", height = "400px")
+include_url("plot3.html", height = "400px")
+include_url("plot4.html", height = "400px")
+include_url("plot5.html", height = "400px")
+include_url("plot6.html", height = "400px")
+```
 
 
 ```{r, cache=TRUE, warning=FALSE, message=FALSE}
@@ -1080,8 +1112,7 @@ autoplot(acf(precip_summary$df[[2]], plot = FALSE))
 
 
 2.78 inches of rain = 70 mm of rain
-```{r, cache=TRUE, warning=FALSE, message=FALSE}
-
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
 all_rain <- precip_summary$df[[1]] %>%
    filter(value > 0) %>%
 filter(str_detect(variable, "pr") ) 
@@ -1098,56 +1129,58 @@ no_rain <- precip_summary$df[[1]] %>%
   filter(value == 0) %>%
 filter(str_detect(variable, "pr") ) 
 
-
-ggplot(data = extreme_rain, aes(x = dates, y=value)) +
-           geom_point(color=our_purple)
-
-ggplot(data = no_rain, aes(x = dates, y=value)) +
-           geom_point(color=our_purple)
-
-extreme_rain_counts <- extreme_rain %>%
-  group_by(dates) %>%
-  summarise(beyond_max = n()/18)
+```
 
 
-no_rain_counts <- no_rain %>%
-  group_by(dates) %>%
-  summarise(beyond_max = n()/18)
-
-  
-  
-  extreme_rain_counts$dates <- format(extreme_rain_counts$dates, format="%Y")
-  no_rain_counts$dates <- format(no_rain_counts$dates, format="%Y")
+```{r,  cache=TRUE, warning=FALSE, message=FALSE}
+extreme_rain$dates <- format(extreme_rain$dates, format="%Y")
+ extreme_rain$value <- metric_to_inches(extreme_rain$value, unit.from = "mm")
+  no_rain$dates <- format(no_rain$dates, format="%Y")
   all_rain$dates <- format(all_rain$dates, format="%Y")
   epic_rain$dates <- format(epic_rain$dates, format="%Y")
   epic_rain$value <- metric_to_inches(epic_rain$value, unit.from = "mm")
  
+```
+
+
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+extreme_rain_counts <- extreme_rain %>%
+ count(dates) %>%
+  mutate(adj_count = n/18)
+
+no_rain_counts <- no_rain %>%
+  count(dates) %>%
+  mutate(adj_count = n/18)
   
+epic_rain_counts <- epic_rain %>%
+ count(dates) %>%
+  mutate(adj_count = n/18)
   
-  ggplot(data=all_rain, aes(x = value, y = dates)) +
+ggplot(data=all_rain, aes(x = value, y = dates)) +
    geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03)+
-     coord_flip() +
+    coord_flip() +
   theme_ridges(grid = FALSE) +
-    theme_tufte() + xlim(0,50)
+    theme_tufte() + xlim(0,50) + xlab("mm of rain")
   
+no_rain_counts$dates <- as.numeric(no_rain_counts$dates)
+extreme_rain_counts$dates <- as.numeric(extreme_rain_counts$dates)
+epic_rain_counts$dates <- as.numeric(epic_rain_counts$dates)
   
-   ggplot(data=extreme_rain_counts, aes(x = beyond_max, y = dates, group=dates)) +
-   geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03)+
-     coord_flip() +
-  theme_ridges(grid = FALSE) +
-   theme_tufte() 
+   ggplot(data=extreme_rain_counts, aes(y = adj_count, x = dates)) +
+   geom_point()+
+   theme_tufte()+ 
+   geom_smooth(col=our_yellow, size=10)
    
-    ggplot(data=no_rain_counts, aes(x = beyond_max, y = dates, group=dates)) +
-   geom_density_ridges(scale = 10, size = 0.25, rel_min_height = 0.03)+
-     coord_flip() +
-  theme_ridges(grid = FALSE) +
-    theme_tufte()
+   ggplot(data=no_rain_counts, aes(y = adj_count, x = dates)) +
+   geom_point()+
+   theme_tufte()+ 
+   geom_smooth(col=our_yellow, size=10)
     
-    ggplot(data=epic_rain, aes(y = value, x = dates)) +
-      geom_point()+
-    theme_tufte() +
-      ylab("inches of rain per day")
-  
+   ggplot(data=epic_rain_counts, aes(y = adj_count, x = dates)) +
+   geom_point()+
+   theme_tufte()+ 
+     geom_smooth(col=our_yellow, size=10)
+     ylim(0,0.4)
 ```
 
 ![The 1951 flood resulted from 8-16 inches over 4 days](https://www.weather.gov/top/1951_flood)

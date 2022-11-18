@@ -28,3 +28,7 @@ changepoint
 weathermetrics
 TSstudio
 ggridges
+plotly
+htmlwidgets
+IRdisplay
+webshot
