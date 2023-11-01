@@ -1,6 +1,8 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "R and Python bilingualism"
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 
@@ -10,7 +12,7 @@ library(rmarkdown)
 
 #render("Haskell.Rmd", md_document())
 
-render("Haskell.Rmd", md_document(variant = "gfm"))
+render("/Users/ty/Documents/Github/pre-innovation-summit-training/docs/2_R_and_Py_bilingualism/code/bilingualism_md.Rmd", md_document(variant = "gfm"))
 
 ```
 

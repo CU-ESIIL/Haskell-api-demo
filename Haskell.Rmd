@@ -16,11 +16,7 @@ output:
 \let\oldsection\section
 \renewcommand\section{\clearpage\oldsection}
 ```{r,  cache=TRUE, warning=FALSE, message=FALSE}
-
-
 options(knitr.kable.NA = '')
-
-
 ```
 
 # Climate futures for [Haskell Indian Nations University](https://www.haskell.edu)
